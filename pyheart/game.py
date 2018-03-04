@@ -3,7 +3,14 @@ from itertools import chain, cycle
 from typing import Iterable
 
 from pyheart.cards import Deck, Card
-from pyheart.exceptions import DeadPlayerError, EmptyDeckError, TooManyCardsError, MissingCardError, NotEnoughManaError
+from pyheart.exceptions import (
+    DeadPlayerError,
+    EmptyDeckError,
+    GameNotStartedError,
+    TooManyCardsError,
+    MissingCardError,
+    NotEnoughManaError
+)
 
 
 class PlayersHand:
@@ -38,10 +45,15 @@ class Player:
     def __init__(self, name: str, is_first: bool=False, hand: PlayersHand=None, health: int=None, mana: int=None):
         self.name = name
         self.health = health or self.HEALTH_LEVEL
-        self.mana = mana or 0
+        self.max_mana = mana or 0
+        self.used_mana = 0
         self.turn = 0
         start_cards_first, start_cards_second = self.NUMBERS_OF_START_CARDS
         self.hand = hand or PlayersHand(start_cards_first if is_first else start_cards_second)
+
+    @property
+    def mana(self):
+        return self.max_mana - self.used_mana
 
     def play(self, card: Card):
         if card not in self.hand:
@@ -52,12 +64,13 @@ class Player:
                 "Card {0} cost [{0.cost}] is bigger than available player's mana [{1.mana}]".format(card, self)
             )
 
-        self.mana -= card.cost
+        self.used_mana += card.cost
         self.hand.discard(card)
 
     def start_turn(self):
         self.turn += 1
-        self.mana = min(self.turn, self.MAX_MANA_LEVEL)
+        self.max_mana = min(max(self.turn, self.max_mana), self.MAX_MANA_LEVEL)
+        self.used_mana = 0
         try:
             self.hand.take_card()
         except EmptyDeckError as e:
@@ -112,9 +125,12 @@ class Game:
             self.end_turn()
 
     def end_turn(self):
-        if self._game_started:
-            self.current_player = next(self._player_order)
-            self.current_player.start_turn()
+        if not self._game_started:
+            raise GameNotStartedError('Action allowed only after game start')
+        self.current_player = next(self._player_order)
+        self.current_player.start_turn()
 
     def play(self, player: Player, card: Card):
+        if not self._game_started:
+            raise GameNotStartedError('Action allowed only after game start')
         self.board.play_card(player, card)

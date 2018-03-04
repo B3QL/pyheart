@@ -21,3 +21,7 @@ class EmptyDeckError(Exception):
 
 class DeadPlayerError(Exception):
     pass
+
+
+class GameNotStartedError(Exception):
+    pass

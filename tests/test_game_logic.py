@@ -24,7 +24,7 @@ def test_play_card_to_board():
     hand = PlayersHand(1, deck)
     player = Player(name='test', hand=hand, mana=10)
     game = Game(players=[player])
-
+    game.start()
     game.play(player, card)
     assert len(game.board) == 1
     assert card in game.board.cards(player)
@@ -36,8 +36,9 @@ def test_not_enough_mana_to_play_card():
     card = MinionCard('test', cost=1000, attack=1, health=1)
     deck = Deck([card])
     hand = PlayersHand(1, deck)
-    player = Player(name='test', hand=hand, mana=1)
+    player = Player(name='test', hand=hand)
     game = Game(players=[player])
+    game.start()
 
     with pytest.raises(NotEnoughManaError):
         game.play(player, card)
@@ -54,6 +55,7 @@ def test_card_played_but_not_in_hand():
     hand = PlayersHand(1, deck)
     player = Player(name='test', hand=hand)
     game = Game(players=[player])
+    game.start()
 
     with pytest.raises(MissingCardError):
         game.play(player, other_card)
@@ -146,5 +148,3 @@ def test_player_no_available_cards():
     with pytest.raises(DeadPlayerError):
         game.end_turn()
     assert player.health == 0
-
-
