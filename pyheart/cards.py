@@ -1,6 +1,6 @@
 import random
 from typing import Iterable
-from pyheart.exceptions import DeadCardError, EmptyDeckError
+from pyheart.exceptions import DeadCardError, EmptyDeckError, CardCannotAttackError
 
 
 CARDS = (
@@ -28,10 +28,14 @@ class MinionCard(Card):
         super(MinionCard, self).__init__(name, cost)
         self.attack = attack
         self.health = health
+        self.can_attack = False
 
-    def attack(self, card):
-        card.health -= self.attack
-        self.health -= card.attack
+    def take_attack(self, attacker_card: 'MinionCard'):
+        if not attacker_card.can_attack:
+            raise CardCannotAttackError('Card {0} cannot attack in current turn'.format(attacker_card))
+
+        attacker_card.can_attack = False
+        self.health -= attacker_card.attack
         if self.health <= 0:
             raise DeadCardError('After attacking health is below 0')
 
@@ -41,15 +45,17 @@ class MinionCard(Card):
 
 class Deck:
     NUMBER_OF_COPIES = 2
+    USED_CARDS = CARDS
 
     def __init__(self, cards: Iterable[Card]=None):
         if cards is not None:
             self.cards = list(cards)
         else:
             self.cards = [
-                MinionCard(name, cost, attack, health)
-                for name, cost, attack, health in CARDS
-            ] * self.NUMBER_OF_COPIES
+                MinionCard(**card_info)
+                for card_info in self.USED_CARDS * self.NUMBER_OF_COPIES
+            ]
+            self.shuffle()
         self.empty_card = 0
 
     def shuffle(self):

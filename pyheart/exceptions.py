@@ -25,3 +25,11 @@ class DeadPlayerError(Exception):
 
 class GameNotStartedError(Exception):
     pass
+
+
+class InvalidPlayerTurnError(Exception):
+    pass
+
+
+class CardCannotAttackError(Exception):
+    pass

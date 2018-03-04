@@ -1,12 +1,14 @@
 from collections import defaultdict
-from itertools import chain, cycle
-from typing import Iterable
+from itertools import chain
+from typing import Dict, Iterable, Sequence
 
-from pyheart.cards import Deck, Card
+from pyheart.cards import Deck, Card, MinionCard
 from pyheart.exceptions import (
     DeadPlayerError,
     EmptyDeckError,
+    DeadCardError,
     GameNotStartedError,
+    InvalidPlayerTurnError,
     TooManyCardsError,
     MissingCardError,
     NotEnoughManaError
@@ -22,7 +24,7 @@ class PlayersHand:
         return card in self.cards
 
     def take_card(self):
-        self.cards.append(self.deck.deal())
+        self.cards.extend(self.deck.deal())
 
     def discard(self, card: Card):
         self.cards.remove(card)
@@ -35,6 +37,12 @@ class PlayersHand:
 
     def __bool__(self):
         return True
+
+    def __iter__(self):
+        return iter(self.cards[:])
+
+    def __getitem__(self, item):
+        return self.cards[item]
 
 
 class Player:
@@ -67,9 +75,12 @@ class Player:
         self.used_mana += card.cost
         self.hand.discard(card)
 
+    def take_attack(self, attacker_card: MinionCard):
+        self.health -= attacker_card.attack
+
     def start_turn(self):
         self.turn += 1
-        self.max_mana = min(max(self.turn, self.max_mana), self.MAX_MANA_LEVEL)
+        self.max_mana = max(min(self.turn, self.MAX_MANA_LEVEL), self.max_mana)
         self.used_mana = 0
         try:
             self.hand.take_card()
@@ -87,37 +98,71 @@ class Player:
 class Board:
     MAX_CARDS_PER_PLAYER = 7
 
-    def __init__(self, cards: Iterable[Card]=None):
-        self.played_cards = defaultdict(set)  # TODO: Change to list, players can have multiple same cards
+    def __init__(self, cards: Dict[Player, Sequence[Card]]=None):
+        self._played_cards = defaultdict(set)
         if cards:
-            self.played_cards.update(cards)
+            self._played_cards.update(cards)
+
+    def activate_cards(self, player: Player):
+        for card in self.played_cards(player):
+            card.can_attack = True
 
     def play_card(self, player: Player, card: Card):
-        played_cards = self.played_cards[player]
+        played_cards = self._played_cards[player]
         if len(played_cards) >= self.MAX_CARDS_PER_PLAYER:
             raise TooManyCardsError('Player can have only {0} cards on board'.format(self.MAX_CARDS_PER_PLAYER))
 
         player.play(card)
         played_cards.add(card)
 
-    def cards(self, player: Player=None):
-        if player:
-            return self.played_cards[player]
+    def attack_card(self, attacker: Player, attack_card: MinionCard, victim: Player, victim_card: MinionCard):
+        if attack_card not in self.played_cards(attacker):
+            raise MissingCardError('Player {0} cannot attack with not played {1} card'.format(attacker, attack_card))
 
-        all_cards = set(chain(*self.played_cards.values()))
+        if victim_card not in self.played_cards(victim):
+            raise MissingCardError('Player {0} cannot attack not played card'.format(attacker))
+
+        try:
+            victim_card.take_attack(attack_card)
+        except DeadCardError:
+            self.played_cards(victim).remove(victim_card)
+
+        try:
+            attack_card.take_attack(victim_card)
+        except DeadCardError:
+            self.played_cards(attacker).remove(attack_card)
+
+    def played_cards(self, player: Player=None):
+        if player:
+            return self._played_cards[player]
+
+        all_cards = set(chain(*self._played_cards.values()))
         return all_cards
 
     def __len__(self):
-        return len(self.cards())
+        return len(self.played_cards())
 
 
 class Game:
     def __init__(self, players: Iterable[Player]=(), board: Board=None):
         self.players = list(players) or [Player(name='1', is_first=True), Player(name='2')]
-        self._player_order = cycle(self.players)
-        self.current_player = None
+        self._turn = -1
         self.board = board or Board()
         self._game_started = False
+
+    def _calculate_turn(self, turn):
+        players_number = len(self.players)
+        return self.players[turn % players_number]
+
+    @property
+    def current_player(self):
+        if self._turn < 0:
+            return None
+        return self._calculate_turn(self._turn)
+
+    @property
+    def next_player(self):
+        return self._calculate_turn(self._turn + 1)
 
     def start(self):
         if not self._game_started:
@@ -127,10 +172,26 @@ class Game:
     def end_turn(self):
         if not self._game_started:
             raise GameNotStartedError('Action allowed only after game start')
-        self.current_player = next(self._player_order)
+        self.board.activate_cards(self.current_player)
+        self._turn += 1
         self.current_player.start_turn()
 
-    def play(self, player: Player, card: Card):
+    def _check_state(self, player: Player):
         if not self._game_started:
             raise GameNotStartedError('Action allowed only after game start')
+
+        if player != self.current_player:
+            raise InvalidPlayerTurnError('Player {0.name} cannot play card in this turn')
+
+    def attack(self, player: Player, attacker: MinionCard, victim: MinionCard):
+        self._check_state(player)
+        opponent = self.next_player
+        self.board.attack_card(player, attacker, opponent, victim)
+
+    def attack_player(self, player, attacker: MinionCard, victim: Player):
+        self._check_state(player)
+        victim.take_attack(attacker)
+
+    def play(self, player: Player, card: Card):
+        self._check_state(player)
         self.board.play_card(player, card)
