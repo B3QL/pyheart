@@ -153,14 +153,14 @@ def test_player_no_available_cards():
     start_health = 5
     player = Player(name='test', hand=hand, health=start_health)
     game = Game(players=[player])
-    assert player.health == start_health
+    assert player._health == start_health
     game.start()
-    assert player.health == start_health - 1
+    assert player._health == start_health - 1
     game.end_turn()
-    assert player.health == start_health - 3
+    assert player._health == start_health - 3
     with pytest.raises(DeadPlayerError):
         game.end_turn()
-    assert player.health == 0
+    assert player._health == 0
 
 
 def test_to_many_minions_on_board():
@@ -324,3 +324,85 @@ def test_attack_player(deck):
     game.attack_player(first_player, first_player_card, second_player)
     assert second_player.health == 10
 
+
+def test_attack_player_not_in_turn():
+    game = Game()
+    first_player, second_player = game.players
+    game.start()
+    first_player_card = first_player.hand[0]
+    second_player_card = second_player.hand[0]
+
+    game.play(first_player, first_player_card)
+    game.end_turn()
+
+    game.play(second_player, second_player_card)
+    game.end_turn()
+
+    game.end_turn()
+    with pytest.raises(InvalidPlayerTurnError):
+        game.attack_player(first_player, first_player_card, second_player)
+
+
+def test_attack_player_twice_with_same_card(deck):
+    deck.USED_CARDS = (
+        dict(name='test', cost=1, attack=10, health=2),
+    )
+    deck.NUMBER_OF_COPIES = 10
+    game = Game()
+    first_player, second_player = game.players
+    game.start()
+    first_player_card = first_player.hand[0]
+    second_player_card = second_player.hand[0]
+
+    game.play(first_player, first_player_card)
+    game.end_turn()
+
+    game.play(second_player, second_player_card)
+    game.end_turn()
+
+    assert second_player.health == 20
+    game.attack_player(first_player, first_player_card, second_player)
+    assert second_player.health == 10
+
+    with pytest.raises(CardCannotAttackError):
+        game.attack_player(first_player, first_player_card, second_player)
+
+    assert second_player.health == 10
+
+
+def test_attack_player_not_played_card():
+    game = Game()
+    first_player, second_player = game.players
+    game.start()
+    first_player_card = first_player.hand[0]
+    second_player_card = second_player.hand[0]
+
+    game.end_turn()
+
+    game.play(second_player, second_player_card)
+    game.end_turn()
+
+    with pytest.raises(MissingCardError):
+        game.attack_player(first_player, first_player_card, second_player)
+
+
+def test_kill_player(deck):
+    deck.USED_CARDS = (
+        dict(name='test', cost=1, attack=50, health=2),
+    )
+    deck.NUMBER_OF_COPIES = 10
+    game = Game()
+    first_player, second_player = game.players
+    game.start()
+    first_player_card = first_player.hand[0]
+    second_player_card = second_player.hand[0]
+
+    game.play(first_player, first_player_card)
+    game.end_turn()
+
+    game.play(second_player, second_player_card)
+    game.end_turn()
+
+    assert second_player.health == 20
+    with pytest.raises(DeadPlayerError):
+        game.attack_player(first_player, first_player_card, second_player)

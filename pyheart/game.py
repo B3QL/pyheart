@@ -11,7 +11,8 @@ from pyheart.exceptions import (
     InvalidPlayerTurnError,
     TooManyCardsError,
     MissingCardError,
-    NotEnoughManaError
+    NotEnoughManaError,
+    CardCannotAttackError
 )
 
 
@@ -52,12 +53,23 @@ class Player:
 
     def __init__(self, name: str, is_first: bool=False, hand: PlayersHand=None, health: int=None, mana: int=None):
         self.name = name
-        self.health = health or self.HEALTH_LEVEL
+        self._health = health or self.HEALTH_LEVEL
         self.max_mana = mana or 0
         self.used_mana = 0
         self.turn = 0
         start_cards_first, start_cards_second = self.NUMBERS_OF_START_CARDS
         self.hand = hand or PlayersHand(start_cards_first if is_first else start_cards_second)
+
+    @property
+    def health(self):
+        return self._health
+
+    @health.setter
+    def health(self, new_health):
+        if new_health <= 0:
+            self._health = 0
+            raise DeadPlayerError("Player's health reaches 0 [{0}]".format(new_health))
+        self._health = new_health
 
     @property
     def mana(self):
@@ -76,6 +88,10 @@ class Player:
         self.hand.discard(card)
 
     def take_attack(self, attacker_card: MinionCard):
+        if not attacker_card.can_attack:
+            raise CardCannotAttackError('Card {0} cannot attack in current turn'.format(attacker_card))
+
+        attacker_card.can_attack = False
         self.health -= attacker_card.attack
 
     def start_turn(self):
@@ -85,11 +101,7 @@ class Player:
         try:
             self.hand.take_card()
         except EmptyDeckError as e:
-            new_health = self.health - e.deal_attempt
-            if new_health <= 0:
-                self.health = 0
-                raise DeadPlayerError("Player's health reaches 0 [{0}]".format(new_health))
-            self.health = new_health
+            self.health -= e.deal_attempt
 
     def __repr__(self):
         return '<{0.__class__.__name__} {0.name} mana: {0.mana}, health: {0.health}>'.format(self)
@@ -190,6 +202,8 @@ class Game:
 
     def attack_player(self, player, attacker: MinionCard, victim: Player):
         self._check_state(player)
+        if attacker not in self.board.played_cards(player):
+            raise MissingCardError('Player {0} cannot attack not played card'.format(attacker))
         victim.take_attack(attacker)
 
     def play(self, player: Player, card: Card):
