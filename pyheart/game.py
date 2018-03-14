@@ -86,6 +86,7 @@ class Player:
 
         self.used_mana += card.cost
         self.hand.discard(card)
+        card.was_played = True
 
     def take_attack(self, attacker_card: MinionCard):
         if not attacker_card.can_attack:
@@ -200,7 +201,7 @@ class Game:
         opponent = self.next_player
         self.board.attack_card(player, attacker, opponent, victim)
 
-    def attack_player(self, player, attacker: MinionCard, victim: Player):
+    def attack_player(self, player: Player, attacker: MinionCard, victim: Player):
         self._check_state(player)
         if attacker not in self.board.played_cards(player):
             raise MissingCardError('Player {0} cannot attack not played card'.format(attacker))

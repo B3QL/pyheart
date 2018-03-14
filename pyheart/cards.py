@@ -3,6 +3,28 @@ from typing import Iterable
 from pyheart.exceptions import DeadCardError, EmptyDeckError, CardCannotAttackError
 
 
+class Ability:
+    def apply(self, card: 'MinionCard', phase_name: str):
+        phase_method_name = f'_{phase_name}_phase'
+        getattr(self, phase_method_name, self.__default_method)(card)
+
+    def __default_method(self, *args, **kwargs):
+        pass
+
+
+class ChargeAbility(Ability):
+    def _init_phase(self, card: 'MinionCard'):
+        card.can_attack = True
+
+
+class IncreaseAttackAbility(Ability):
+    def __init__(self, value: int):
+        self._val = value
+
+    def _play_phase(self, card: 'MinionCard'):
+        card.attack += self._val
+
+
 CARDS = (
     # https://www.hearthpwn.com/cards/27400-hungry-naga
     dict(name='Hungry Naga', cost=1, attack=1, health=1),
@@ -14,6 +36,10 @@ CARDS = (
     dict(name='Bone Construct', cost=1, attack=4, health=2),
     # https://www.hearthpwn.com/cards/27334-animated-statue
     dict(name='Animated Statue', cost=1, attack=10, health=10),
+    # https://www.hearthpwn.com/cards/14612-aberration
+    dict(name='Aberration', cost=1, attack=1, health=1, ability=ChargeAbility()),
+    # https://www.hearthpwn.com/cards/77024-abusive-sergeant
+    dict(name='Abusive Sergeant', cost=1, attack=2, health=1, ability=IncreaseAttackAbility(2)),
 )
 
 
@@ -21,6 +47,7 @@ class Card:
     def __init__(self, name: str, cost: int):
         self.name = name
         self.cost = cost
+        self.was_played = False
 
     def __str__(self):
         return self.name
@@ -30,11 +57,24 @@ class Card:
 
 
 class MinionCard(Card):
-    def __init__(self, name: str, cost: int, attack: int, health: int):
+    def __init__(self, name: str, cost: int, attack: int, health: int, ability: Ability = Ability()):
         super(MinionCard, self).__init__(name, cost)
         self.attack = attack
         self.health = health
         self.can_attack = False
+        self._was_played = self.was_played
+        self.ability = ability
+        self.ability.apply(self, phase_name='init')
+
+    @property
+    def was_played(self):
+        return self._was_played
+
+    @was_played.setter
+    def was_played(self, value):
+        self._was_played = value
+        if value:
+            self.ability.apply(self, phase_name='play')
 
     def take_attack(self, attacker_card: 'MinionCard'):
         if not attacker_card.can_attack:

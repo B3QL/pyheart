@@ -1,7 +1,7 @@
 import pytest
 
 from pyheart import Game, Player, PlayersHand
-from pyheart.cards import Deck, MinionCard
+from pyheart.cards import Deck, MinionCard, ChargeAbility, IncreaseAttackAbility
 from pyheart.exceptions import (
     DeadPlayerError,
     InvalidPlayerTurnError,
@@ -267,7 +267,11 @@ def test_minion_removed_from_board_after_die(deck):
     assert len(game.board) == 0
 
 
-def test_simple_minion_cannot_attack_in_played_turn():
+def test_simple_minion_cannot_attack_in_played_turn(deck):
+    deck.USED_CARDS = (
+        dict(name='test', cost=1, attack=10, health=2),
+    )
+    deck.NUMBER_OF_COPIES = 10
     game = Game()
     first_player, second_player = game.players
     game.start()
@@ -406,3 +410,54 @@ def test_kill_player(deck):
     assert second_player.health == 20
     with pytest.raises(DeadPlayerError):
         game.attack_player(first_player, first_player_card, second_player)
+
+
+def test_minion_card_charge_ability_attack_card(deck):
+    deck.USED_CARDS = (
+        dict(name='test', cost=1, attack=10, health=2, ability=ChargeAbility()),
+    )
+    deck.NUMBER_OF_COPIES = 10
+    game = Game()
+    first_player, second_player = game.players
+    game.start()
+    first_player_card = first_player.hand[0]
+    second_player_card = second_player.hand[0]
+
+    game.play(first_player, first_player_card)
+    game.end_turn()
+
+    game.play(second_player, second_player_card)
+    game.attack(second_player, second_player_card, first_player_card)
+
+
+def test_minion_card_charge_ability_attack_player(deck):
+    deck.USED_CARDS = (
+        dict(name='test', cost=1, attack=10, health=2, ability=ChargeAbility()),
+    )
+    deck.NUMBER_OF_COPIES = 10
+    game = Game()
+    first_player, second_player = game.players
+    game.start()
+    first_player_card = first_player.hand[0]
+    second_player_card = second_player.hand[0]
+
+    game.play(first_player, first_player_card)
+    game.end_turn()
+
+    game.play(second_player, second_player_card)
+    game.attack_player(second_player, second_player_card, first_player)
+
+
+def test_minion_card_increase_attack_ability(deck):
+    deck.USED_CARDS = (
+        dict(name='test', cost=1, attack=1, health=2, ability=IncreaseAttackAbility(10)),
+    )
+    deck.NUMBER_OF_COPIES = 10
+    game = Game()
+    first_player, _ = game.players
+    game.start()
+    first_player_card = first_player.hand[0]
+
+    assert first_player_card.attack == 1
+    game.play(first_player, first_player_card)
+    assert first_player_card.attack == 11
