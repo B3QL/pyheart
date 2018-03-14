@@ -6,8 +6,14 @@ from pyheart.exceptions import DeadCardError, EmptyDeckError, CardCannotAttackEr
 CARDS = (
     # https://www.hearthpwn.com/cards/27400-hungry-naga
     dict(name='Hungry Naga', cost=1, attack=1, health=1),
+    # https://www.hearthpwn.com/cards/14652-black-whelp
+    dict(name='Black Whelp', cost=1, attack=2, health=1),
     # https://www.hearthpwn.com/cards/27375-mechanical-parrot
     dict(name='Mechanical Parrot', cost=1, attack=3, health=6),
+    # https://www.hearthpwn.com/cards/14630-bone-construct
+    dict(name='Bone Construct', cost=1, attack=4, health=2),
+    # https://www.hearthpwn.com/cards/27334-animated-statue
+    dict(name='Animated Statue', cost=1, attack=10, health=10),
 )
 
 
