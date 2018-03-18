@@ -44,27 +44,11 @@ CARDS = (
 
 
 class Card:
-    def __init__(self, name: str, cost: int):
+    def __init__(self, name: str, cost: int, ability: Ability):
         self.name = name
         self.cost = cost
-        self.was_played = False
-
-    def __str__(self):
-        return self.name
-
-    def __repr__(self):
-        return '<{0.__class__.__name__}: {0.name}>'.format(self)
-
-
-class MinionCard(Card):
-    def __init__(self, name: str, cost: int, attack: int, health: int, ability: Ability = Ability()):
-        super(MinionCard, self).__init__(name, cost)
-        self.attack = attack
-        self.health = health
-        self.can_attack = False
-        self._was_played = self.was_played
+        self._was_played = False
         self.ability = ability
-        self.ability.apply(self, phase_name='init')
 
     @property
     def was_played(self):
@@ -75,6 +59,21 @@ class MinionCard(Card):
         self._was_played = value
         if value:
             self.ability.apply(self, phase_name='play')
+
+    def __str__(self):
+        return self.name
+
+    def __repr__(self):
+        return '<{0.__class__.__name__}: {0.name}>'.format(self)
+
+
+class MinionCard(Card):
+    def __init__(self, name: str, cost: int, attack: int, health: int, ability: Ability = Ability()):
+        super(MinionCard, self).__init__(name, cost, ability)
+        self.attack = attack
+        self.health = health
+        self.can_attack = False
+        self.ability.apply(self, phase_name='init')
 
     def take_attack(self, attacker_card: 'MinionCard'):
         if not attacker_card.can_attack:

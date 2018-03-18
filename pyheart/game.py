@@ -18,7 +18,10 @@ from pyheart.exceptions import (
 
 class PlayersHand:
     def __init__(self, number_of_cards: int, deck: Deck=None):
-        self.deck = deck or Deck()
+        self.deck = deck
+        if deck is None:
+            self.deck = Deck()
+            self.deck.shuffle()
         self.cards = self.deck.deal(number_of_cards)
 
     def __contains__(self, card: Card):

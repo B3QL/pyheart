@@ -191,7 +191,11 @@ def test_player_cannot_do_action_until_its_turn():
         game.play(second_player, card)
 
 
-def test_only_played_minion_can_attack():
+def test_only_played_minion_can_attack(deck):
+    deck.USED_CARDS = (
+        dict(name='test', cost=1, attack=1, health=2),
+    )
+    deck.NUMBER_OF_COPIES = 10
     game = Game()
     first_player, second_player = game.players
     game.start()
@@ -205,7 +209,11 @@ def test_only_played_minion_can_attack():
         game.attack(second_player, second_player_card, first_player_card)
 
 
-def test_player_cannot_attack_without_turn():
+def test_player_cannot_attack_without_turn(deck):
+    deck.USED_CARDS = (
+        dict(name='test', cost=1, attack=1, health=2),
+    )
+    deck.NUMBER_OF_COPIES = 10
     game = Game()
     first_player, second_player = game.players
     game.start()
@@ -329,7 +337,11 @@ def test_attack_player(deck):
     assert second_player.health == 10
 
 
-def test_attack_player_not_in_turn():
+def test_attack_player_not_in_turn(deck):
+    deck.USED_CARDS = (
+        dict(name='test', cost=1, attack=1, health=2),
+    )
+    deck.NUMBER_OF_COPIES = 10
     game = Game()
     first_player, second_player = game.players
     game.start()
@@ -374,7 +386,11 @@ def test_attack_player_twice_with_same_card(deck):
     assert second_player.health == 10
 
 
-def test_attack_player_not_played_card():
+def test_attack_player_not_played_card(deck):
+    deck.USED_CARDS = (
+        dict(name='test', cost=1, attack=1, health=2),
+    )
+    deck.NUMBER_OF_COPIES = 10
     game = Game()
     first_player, second_player = game.players
     game.start()
