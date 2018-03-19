@@ -32,10 +32,10 @@ def test_create_new_game():
 
 
 def test_play_card_to_board():
-    card = MinionCard(name='test', cost=1, attack=1, health=1)
-    deck = Deck([card])
+    deck = Deck(MinionCard(name='test', cost=1, attack=1, health=1) for _ in range(10))
     game = Game(player_decks=[deck])
     player, = game.players
+    card = player.hand[0]
 
     game.start()
     assert player.mana == 1
@@ -47,10 +47,10 @@ def test_play_card_to_board():
 
 
 def test_not_enough_mana_to_play_card():
-    card = MinionCard('test', cost=1000, attack=1, health=1)
-    deck = Deck([card])
+    deck = Deck(MinionCard('test', cost=1000, attack=1, health=1) for _ in range(10))
     game = Game(player_decks=[deck])
     player, = game.players
+    card = player.hand[0]
     game.start()
 
     with pytest.raises(NotEnoughManaError):

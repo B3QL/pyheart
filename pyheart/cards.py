@@ -100,8 +100,9 @@ class Deck:
     def deal(self, number: int=1)->Iterable[Card]:
         next_cards = self.cards[:number]
         self.cards = self.cards[number:]
-        if not next_cards and number > 0:
-            self.empty_card += 1
+        difference = number - len(next_cards)
+        if difference > 0:
+            self.empty_card += difference
             raise EmptyDeckError(self.empty_card)
         return next_cards
 
