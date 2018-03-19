@@ -25,24 +25,6 @@ class IncreaseAttackAbility(Ability):
         card.attack += self._val
 
 
-CARDS = (
-    # https://www.hearthpwn.com/cards/27400-hungry-naga
-    dict(name='Hungry Naga', cost=1, attack=1, health=1),
-    # https://www.hearthpwn.com/cards/14652-black-whelp
-    dict(name='Black Whelp', cost=1, attack=2, health=1),
-    # https://www.hearthpwn.com/cards/27375-mechanical-parrot
-    dict(name='Mechanical Parrot', cost=1, attack=3, health=6),
-    # https://www.hearthpwn.com/cards/14630-bone-construct
-    dict(name='Bone Construct', cost=1, attack=4, health=2),
-    # https://www.hearthpwn.com/cards/27334-animated-statue
-    dict(name='Animated Statue', cost=1, attack=10, health=10),
-    # https://www.hearthpwn.com/cards/14612-aberration
-    dict(name='Aberration', cost=1, attack=1, health=1, ability=ChargeAbility()),
-    # https://www.hearthpwn.com/cards/77024-abusive-sergeant
-    dict(name='Abusive Sergeant', cost=1, attack=2, health=1, ability=IncreaseAttackAbility(2)),
-)
-
-
 class Card:
     def __init__(self, name: str, cost: int, ability: Ability):
         self.name = name
@@ -89,24 +71,14 @@ class MinionCard(Card):
 
 
 class Deck:
-    NUMBER_OF_COPIES = 2
-    USED_CARDS = CARDS
-
-    def __init__(self, cards: Iterable[Card]=None):
-        if cards is not None:
-            self.cards = list(cards)
-        else:
-            self.cards = [
-                MinionCard(**card_info)
-                for card_info in self.USED_CARDS * self.NUMBER_OF_COPIES
-            ]
-            self.shuffle()
+    def __init__(self, cards: Iterable[Card]):
+        self.cards = list(cards)
         self.empty_card = 0
 
     def shuffle(self):
         random.shuffle(self.cards)
 
-    def deal(self, number: int=1):
+    def deal(self, number: int=1)->Iterable[Card]:
         next_cards = self.cards[:number]
         self.cards = self.cards[number:]
         if not next_cards and number > 0:
@@ -122,3 +94,31 @@ class Deck:
 
     def __repr__(self):
         return '<{0.__class__.__name__} available cards: {1}>'.format(self, len(self))
+
+
+class DefaultDeck(Deck):
+    CARDS = (
+        # https://www.hearthpwn.com/cards/27400-hungry-naga
+        dict(name='Hungry Naga', cost=1, attack=1, health=1),
+        # https://www.hearthpwn.com/cards/14652-black-whelp
+        dict(name='Black Whelp', cost=1, attack=2, health=1),
+        # https://www.hearthpwn.com/cards/27375-mechanical-parrot
+        dict(name='Mechanical Parrot', cost=1, attack=3, health=6),
+        # https://www.hearthpwn.com/cards/14630-bone-construct
+        dict(name='Bone Construct', cost=1, attack=4, health=2),
+        # https://www.hearthpwn.com/cards/27334-animated-statue
+        dict(name='Animated Statue', cost=1, attack=10, health=10),
+        # https://www.hearthpwn.com/cards/14612-aberration
+        dict(name='Aberration', cost=1, attack=1, health=1, ability=ChargeAbility()),
+        # https://www.hearthpwn.com/cards/77024-abusive-sergeant
+        dict(name='Abusive Sergeant', cost=1, attack=2, health=1, ability=IncreaseAttackAbility(2)),
+    )
+
+    NUMBER_OF_COPIES = 2
+
+    def __init__(self):
+        cards = [
+            MinionCard(**card_info)
+            for card_info in self.CARDS * self.NUMBER_OF_COPIES
+        ]
+        super(DefaultDeck, self).__init__(cards)

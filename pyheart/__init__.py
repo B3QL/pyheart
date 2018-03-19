@@ -1,1 +1,1 @@
-from pyheart.game import Game, Player, PlayersHand  #noqa
+from pyheart.game import Game  #noqa

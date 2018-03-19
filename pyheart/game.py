@@ -2,7 +2,7 @@ from collections import defaultdict
 from itertools import chain
 from typing import Dict, Iterable, Sequence
 
-from pyheart.cards import Deck, Card, MinionCard
+from pyheart.cards import Deck, DefaultDeck, Card, MinionCard
 from pyheart.exceptions import (
     DeadPlayerError,
     EmptyDeckError,
@@ -16,52 +16,26 @@ from pyheart.exceptions import (
 )
 
 
-class PlayersHand:
-    def __init__(self, number_of_cards: int, deck: Deck=None):
-        self.deck = deck
-        if deck is None:
-            self.deck = Deck()
-            self.deck.shuffle()
-        self.cards = self.deck.deal(number_of_cards)
-
-    def __contains__(self, card: Card):
-        return card in self.cards
-
-    def take_card(self):
-        self.cards.extend(self.deck.deal())
-
-    def discard(self, card: Card):
-        self.cards.remove(card)
-
-    def __len__(self):
-        return len(self.cards)
-
-    def __repr__(self):
-        return '<{0.__class__.__name__} cards in hand: {1}, cards in deck {2}>'.format(self, len(self), len(self.deck))
-
-    def __bool__(self):
-        return True
-
-    def __iter__(self):
-        return iter(self.cards[:])
-
-    def __getitem__(self, item):
-        return self.cards[item]
-
-
 class Player:
     HEALTH_LEVEL = 20
-    NUMBERS_OF_START_CARDS = (3, 4)
     MAX_MANA_LEVEL = 10
 
-    def __init__(self, name: str, is_first: bool=False, hand: PlayersHand=None, health: int=None, mana: int=None):
+    def __init__(self, name: str, cards_number: int, deck: Deck):
         self.name = name
-        self._health = health or self.HEALTH_LEVEL
-        self.max_mana = mana or 0
+        self._health = self.HEALTH_LEVEL
+        self.current_mana = 0
         self.used_mana = 0
         self.turn = 0
-        start_cards_first, start_cards_second = self.NUMBERS_OF_START_CARDS
-        self.hand = hand or PlayersHand(start_cards_first if is_first else start_cards_second)
+        self.deck = deck
+        self._hand = list(deck.deal(cards_number))
+
+    @property
+    def hand(self):
+        return list(self._hand)
+
+    @hand.setter
+    def hand(self, value):
+        self._hand = value
 
     @property
     def health(self):
@@ -76,10 +50,14 @@ class Player:
 
     @property
     def mana(self):
-        return self.max_mana - self.used_mana
+        return self.current_mana - self.used_mana
+
+    @mana.setter
+    def mana(self, value):
+        self.current_mana = value
 
     def play(self, card: Card):
-        if card not in self.hand:
+        if card not in self._hand:
             raise MissingCardError("Card {0} is not in player's hand".format(card))
 
         if card.cost > self.mana:
@@ -88,7 +66,7 @@ class Player:
             )
 
         self.used_mana += card.cost
-        self.hand.discard(card)
+        self._hand.remove(card)
         card.was_played = True
 
     def take_attack(self, attacker_card: MinionCard):
@@ -100,10 +78,14 @@ class Player:
 
     def start_turn(self):
         self.turn += 1
-        self.max_mana = max(min(self.turn, self.MAX_MANA_LEVEL), self.max_mana)
+        self.current_mana = max(min(self.turn, self.MAX_MANA_LEVEL), self.current_mana)
         self.used_mana = 0
+        self.take_cards(1)
+
+    def take_cards(self, number):
         try:
-            self.hand.take_card()
+            new_card = self.deck.deal(number)
+            self._hand.extend(new_card)
         except EmptyDeckError as e:
             self.health -= e.deal_attempt
 
@@ -160,10 +142,19 @@ class Board:
 
 
 class Game:
-    def __init__(self, players: Iterable[Player]=(), board: Board=None):
-        self.players = list(players) or [Player(name='1', is_first=True), Player(name='2')]
+    NUMBERS_OF_START_CARDS = (3, 4)
+    DEFAULT_PLAYER_NAMES = ('Player 1', 'Player 2')
+
+    def __init__(self, player_names: Iterable[str] = DEFAULT_PLAYER_NAMES, player_decks: Iterable[Deck] = None):
+        self.board = Board()
+        if player_decks is None:
+            player_decks = [DefaultDeck() for _ in player_names]
+
+        self.players = [
+            Player(name, start_cards, deck)
+            for name, start_cards, deck in zip(player_names, self.NUMBERS_OF_START_CARDS, player_decks)
+        ]
         self._turn = -1
-        self.board = board or Board()
         self._game_started = False
 
     def _calculate_turn(self, turn):
