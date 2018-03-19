@@ -130,7 +130,7 @@ def test_max_mana_not_above_10():
     game = Game()
     player, _ = game.players
     game.start()
-    turns = range(20)
+    turns = range(30)
     for _ in turns:
         game.end_turn()
 

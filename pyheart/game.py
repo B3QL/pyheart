@@ -19,9 +19,8 @@ class Player:
     def __init__(self, name: str, cards_number: int, deck: Deck, board: 'Board'):
         self.name = name
         self._health = self.HEALTH_LEVEL
-        self.current_mana = 0
+        self._current_mana = 0
         self.used_mana = 0
-        self.turn = 0
         self.deck = deck
         self._hand = list(deck.deal(cards_number))
         self._board = board
@@ -47,11 +46,19 @@ class Player:
 
     @property
     def mana(self):
-        return self.current_mana - self.used_mana
+        return self._current_mana - self.used_mana
 
     @mana.setter
     def mana(self, value):
-        self.current_mana = value
+        self._current_mana = value
+
+    @property
+    def current_mana(self):
+        return self._current_mana
+
+    @current_mana.setter
+    def current_mana(self, value):
+        self._current_mana = min(value, self.MAX_MANA_LEVEL)
 
     def play(self, card: Card):
         if card not in self._hand:
@@ -71,12 +78,6 @@ class Player:
             raise MissingCardError('{0} can not attack with not played {1} card'.format(self, attacker))
         self._board.attack(attacker, victim)
 
-    def start_turn(self):
-        self.turn += 1
-        self.current_mana = max(min(self.turn, self.MAX_MANA_LEVEL), self.current_mana)
-        self.used_mana = 0
-        self.take_cards(1)
-
     def take_cards(self, number):
         try:
             new_card = self.deck.deal(number)
@@ -94,7 +95,7 @@ class Board:
     def __init__(self):
         self._played_cards = {}
 
-    def activate_cards(self, player: Player):
+    def reset_cards(self, player: Player):
         for card in self.played_cards(player):
             card.can_attack = True
 
@@ -164,9 +165,15 @@ class Game:
     def end_turn(self):
         if not self._game_started:
             raise GameNotStartedError('Action allowed only after game start')
-        self.board.activate_cards(self.current_player)
         self._turn += 1
-        self.current_player.start_turn()
+        self.board.reset_cards(self.current_player)
+        self._reset_player(self.current_player)
+
+    @staticmethod
+    def _reset_player(player: Player):
+        player.current_mana += 1
+        player.used_mana = 0
+        player.take_cards(1)
 
     def _check_state(self, player: Player):
         if not self._game_started:
