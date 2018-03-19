@@ -1,5 +1,5 @@
 import random
-from typing import Iterable
+from typing import Iterable, List, Union
 from pyheart.exceptions import DeadCardError, EmptyDeckError, CardCannotAttackError
 
 
@@ -17,12 +17,12 @@ class ChargeAbility(Ability):
         card.can_attack = True
 
 
-class IncreaseAttackAbility(Ability):
+class IncreaseDamageAbility(Ability):
     def __init__(self, value: int):
         self._val = value
 
     def _play_phase(self, card: 'MinionCard'):
-        card.attack += self._val
+        card.damage += self._val
 
 
 class Card:
@@ -52,19 +52,38 @@ class Card:
 class MinionCard(Card):
     def __init__(self, name: str, cost: int, attack: int, health: int, ability: Ability = Ability()):
         super(MinionCard, self).__init__(name, cost, ability)
-        self.attack = attack
-        self.health = health
+        self.damage = attack
+        self._health = health
         self.can_attack = False
         self.ability.apply(self, phase_name='init')
 
-    def take_attack(self, attacker_card: 'MinionCard'):
-        if not attacker_card.can_attack:
-            raise CardCannotAttackError('Card {0} cannot attack in current turn'.format(attacker_card))
+    @property
+    def health(self):
+        return self._health
 
-        attacker_card.can_attack = False
-        self.health -= attacker_card.attack
-        if self.health <= 0:
+    @health.setter
+    def health(self, value):
+        self._health = max(0, value)
+        if value <= 0:
             raise DeadCardError('After attacking health is below 0')
+
+    def attack(self, victim: Union['MinionCard', 'Player']) -> List['MinionCard']:
+        if not self.can_attack:
+            raise CardCannotAttackError('Card {0} cannot attack in current turn'.format(self))
+
+        self.can_attack = False
+        dead_cards = []
+        try:
+            victim.health -= self.damage
+        except DeadCardError:
+            dead_cards.append(victim)
+
+        try:
+            self.health -= getattr(victim, 'damage', 0)
+        except DeadCardError:
+            dead_cards.append(self)
+
+        return dead_cards
 
     def __repr__(self):
         return '<{0.__class__.__name__}: {0.name} {0.health} HP>'.format(self)
@@ -111,7 +130,7 @@ class DefaultDeck(Deck):
         # https://www.hearthpwn.com/cards/14612-aberration
         dict(name='Aberration', cost=1, attack=1, health=1, ability=ChargeAbility()),
         # https://www.hearthpwn.com/cards/77024-abusive-sergeant
-        dict(name='Abusive Sergeant', cost=1, attack=2, health=1, ability=IncreaseAttackAbility(2)),
+        dict(name='Abusive Sergeant', cost=1, attack=2, health=1, ability=IncreaseDamageAbility(2)),
     )
 
     NUMBER_OF_COPIES = 2

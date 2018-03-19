@@ -1,7 +1,7 @@
 import pytest
 
 from pyheart import Game
-from pyheart.cards import Deck, MinionCard, ChargeAbility, IncreaseAttackAbility
+from pyheart.cards import Deck, MinionCard, ChargeAbility, IncreaseDamageAbility
 from pyheart.exceptions import (
     DeadPlayerError,
     InvalidPlayerTurnError,
@@ -308,7 +308,7 @@ def test_attack_player():
     game.end_turn()
 
     assert second_player.health == 20
-    game.attack_player(first_player, first_player_card, second_player)
+    game.attack(first_player, first_player_card, second_player)
     assert second_player.health == 10
 
 
@@ -328,7 +328,7 @@ def test_attack_player_not_in_turn():
 
     game.end_turn()
     with pytest.raises(InvalidPlayerTurnError):
-        game.attack_player(first_player, first_player_card, second_player)
+        game.attack(first_player, first_player_card, second_player)
 
 
 def test_attack_player_twice_with_same_card():
@@ -346,11 +346,11 @@ def test_attack_player_twice_with_same_card():
     game.end_turn()
 
     assert second_player.health == 20
-    game.attack_player(first_player, first_player_card, second_player)
+    game.attack(first_player, first_player_card, second_player)
     assert second_player.health == 10
 
     with pytest.raises(CardCannotAttackError):
-        game.attack_player(first_player, first_player_card, second_player)
+        game.attack(first_player, first_player_card, second_player)
 
     assert second_player.health == 10
 
@@ -369,7 +369,7 @@ def test_attack_player_not_played_card():
     game.end_turn()
 
     with pytest.raises(MissingCardError):
-        game.attack_player(first_player, first_player_card, second_player)
+        game.attack(first_player, first_player_card, second_player)
 
 
 def test_kill_player():
@@ -388,7 +388,7 @@ def test_kill_player():
 
     assert second_player.health == 20
     with pytest.raises(DeadPlayerError):
-        game.attack_player(first_player, first_player_card, second_player)
+        game.attack(first_player, first_player_card, second_player)
 
 
 def test_minion_card_charge_ability_attack_card():
@@ -418,18 +418,18 @@ def test_minion_card_charge_ability_attack_player():
     game.end_turn()
 
     game.play(second_player, second_player_card)
-    game.attack_player(second_player, second_player_card, first_player)
+    game.attack(second_player, second_player_card, first_player)
 
 
 def test_minion_card_increase_attack_ability():
     deck = Deck(
-        MinionCard(name='test', cost=1, attack=1, health=2, ability=IncreaseAttackAbility(10)) for _ in range(10)
+        MinionCard(name='test', cost=1, attack=1, health=2, ability=IncreaseDamageAbility(10)) for _ in range(10)
     )
     game = Game(player_decks=[deck, deck])
     first_player, _ = game.players
     game.start()
     first_player_card = first_player.hand[0]
 
-    assert first_player_card.attack == 1
+    assert first_player_card.damage == 1
     game.play(first_player, first_player_card)
-    assert first_player_card.attack == 11
+    assert first_player_card.damage == 11

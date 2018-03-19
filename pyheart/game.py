@@ -1,18 +1,14 @@
-from collections import defaultdict
-from itertools import chain
-from typing import Dict, Iterable, Sequence
+from typing import Iterable, Union
 
 from pyheart.cards import Deck, DefaultDeck, Card, MinionCard
 from pyheart.exceptions import (
     DeadPlayerError,
     EmptyDeckError,
-    DeadCardError,
     GameNotStartedError,
     InvalidPlayerTurnError,
     TooManyCardsError,
     MissingCardError,
     NotEnoughManaError,
-    CardCannotAttackError
 )
 
 
@@ -20,7 +16,7 @@ class Player:
     HEALTH_LEVEL = 20
     MAX_MANA_LEVEL = 10
 
-    def __init__(self, name: str, cards_number: int, deck: Deck):
+    def __init__(self, name: str, cards_number: int, deck: Deck, board: 'Board'):
         self.name = name
         self._health = self.HEALTH_LEVEL
         self.current_mana = 0
@@ -28,6 +24,7 @@ class Player:
         self.turn = 0
         self.deck = deck
         self._hand = list(deck.deal(cards_number))
+        self._board = board
 
     @property
     def hand(self):
@@ -64,17 +61,15 @@ class Player:
             raise NotEnoughManaError(
                 "Card {0} cost [{0.cost}] is bigger than available player's mana [{1.mana}]".format(card, self)
             )
-
+        self._board.play_card(player=self, card=card)
         self.used_mana += card.cost
         self._hand.remove(card)
         card.was_played = True
 
-    def take_attack(self, attacker_card: MinionCard):
-        if not attacker_card.can_attack:
-            raise CardCannotAttackError('Card {0} cannot attack in current turn'.format(attacker_card))
-
-        attacker_card.can_attack = False
-        self.health -= attacker_card.attack
+    def attack(self, attacker: Card, victim: Union[MinionCard, 'Player']):
+        if attacker not in self._board.played_cards(self):
+            raise MissingCardError('{0} can not attack with not played {1} card'.format(self, attacker))
+        self._board.attack(attacker, victim)
 
     def start_turn(self):
         self.turn += 1
@@ -96,46 +91,36 @@ class Player:
 class Board:
     MAX_CARDS_PER_PLAYER = 7
 
-    def __init__(self, cards: Dict[Player, Sequence[Card]]=None):
-        self._played_cards = defaultdict(set)
-        if cards:
-            self._played_cards.update(cards)
+    def __init__(self):
+        self._played_cards = {}
 
     def activate_cards(self, player: Player):
         for card in self.played_cards(player):
             card.can_attack = True
 
     def play_card(self, player: Player, card: Card):
-        played_cards = self._played_cards[player]
+        played_cards = self.played_cards(player)
         if len(played_cards) >= self.MAX_CARDS_PER_PLAYER:
             raise TooManyCardsError('Player can have only {0} cards on board'.format(self.MAX_CARDS_PER_PLAYER))
+        self._played_cards[card] = player
 
-        player.play(card)
-        played_cards.add(card)
+    def attack(self, attacker: MinionCard, victim: Union[MinionCard, Player]):
+        attacker_player = self._played_cards[attacker]
+        if victim in set(self._played_cards.values()):
+            victim_player = victim
+        else:
+            victim_player = self._played_cards.get(victim, attacker_player)
 
-    def attack_card(self, attacker: Player, attack_card: MinionCard, victim: Player, victim_card: MinionCard):
-        if attack_card not in self.played_cards(attacker):
-            raise MissingCardError('Player {0} cannot attack with not played {1} card'.format(attacker, attack_card))
+        if attacker_player == victim_player:
+            raise MissingCardError('{0} cannot attack {1} card'.format(attacker, victim))
 
-        if victim_card not in self.played_cards(victim):
-            raise MissingCardError('Player {0} cannot attack not played card'.format(attacker))
-
-        try:
-            victim_card.take_attack(attack_card)
-        except DeadCardError:
-            self.played_cards(victim).remove(victim_card)
-
-        try:
-            attack_card.take_attack(victim_card)
-        except DeadCardError:
-            self.played_cards(attacker).remove(attack_card)
+        for dead_card in attacker.attack(victim):
+            del self._played_cards[dead_card]
 
     def played_cards(self, player: Player=None):
         if player:
-            return self._played_cards[player]
-
-        all_cards = set(chain(*self._played_cards.values()))
-        return all_cards
+            return list(k for k, v in self._played_cards.items() if v == player)
+        return list(self._played_cards)
 
     def __len__(self):
         return len(self.played_cards())
@@ -151,7 +136,7 @@ class Game:
             player_decks = [DefaultDeck() for _ in player_names]
 
         self.players = [
-            Player(name, start_cards, deck)
+            Player(name, start_cards, deck, self.board)
             for name, start_cards, deck in zip(player_names, self.NUMBERS_OF_START_CARDS, player_decks)
         ]
         self._turn = -1
@@ -190,17 +175,10 @@ class Game:
         if player != self.current_player:
             raise InvalidPlayerTurnError('Player {0.name} cannot play card in this turn')
 
-    def attack(self, player: Player, attacker: MinionCard, victim: MinionCard):
+    def attack(self, player: Player, attacker: MinionCard, victim: Union[MinionCard, Player]):
         self._check_state(player)
-        opponent = self.next_player
-        self.board.attack_card(player, attacker, opponent, victim)
-
-    def attack_player(self, player: Player, attacker: MinionCard, victim: Player):
-        self._check_state(player)
-        if attacker not in self.board.played_cards(player):
-            raise MissingCardError('Player {0} cannot attack not played card'.format(attacker))
-        victim.take_attack(attacker)
+        self.current_player.attack(attacker, victim)
 
     def play(self, player: Player, card: Card):
         self._check_state(player)
-        self.board.play_card(player, card)
+        self.current_player.play(card)
