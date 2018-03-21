@@ -1,14 +1,23 @@
 import pytest
 
 from pyheart import Game
-from pyheart.cards import Deck, MinionCard, ChargeAbility, IncreaseDamageAbility
+from pyheart.cards import (
+    Deck,
+    MinionCard,
+    ChargeAbility,
+    IncreaseDamageAbility,
+    AbilityCard,
+    IncreaseMinonsHealthAbility,
+    SetMinonHealthAndDamage,
+    DealDamage)
 from pyheart.exceptions import (
     DeadPlayerError,
     InvalidPlayerTurnError,
     MissingCardError,
     NotEnoughManaError,
     TooManyCardsError,
-    CardCannotAttackError
+    CardCannotAttackError,
+    TargetNotDefinedError
 )
 
 
@@ -156,23 +165,23 @@ def test_player_no_available_cards(game):
 
 
 def test_to_many_minions_on_board(game):
-    game.NUMBERS_OF_START_CARDS = (6, 0)
-    g = game()
-    player, _ = g.players
+    deck = Deck(MinionCard(name='test', cost=1, attack=1, health=2) for _ in range(10))
+    game.NUMBERS_OF_START_CARDS = (7, 0)
+    g = game(player_decks=[deck])
+    player, = g.players
     player.mana = 200
     g.start()
 
-    assert len(player.hand) == 7
+    assert len(player.hand) == 8
     assert len(g.board.played_cards(player)) == 0
-    for card in player.hand:
-        g.play(player, card)
-    assert len(g.board.played_cards(player)) == 7
-    g.end_turn()
-    g.end_turn()
-    card = player.hand[0]
 
-    with pytest.raises(TooManyCardsError):
+    last_card, *rest_cards = player.hand
+    for card in rest_cards:
         g.play(player, card)
+
+    assert len(g.board.played_cards(player)) == 7
+    with pytest.raises(TooManyCardsError):
+        g.play(player, last_card)
 
 
 def test_player_cannot_do_action_until_its_turn():
@@ -433,3 +442,94 @@ def test_minion_card_increase_attack_ability():
     assert first_player_card.damage == 1
     game.play(first_player, first_player_card)
     assert first_player_card.damage == 11
+
+
+def test_increase_minions_health_spell():
+    deck = Deck([
+        MinionCard(name='minon 1', cost=0, attack=50, health=2),
+        MinionCard(name='minon 2', cost=0, attack=50, health=2),
+        AbilityCard(name='spell', cost=1, ability=IncreaseMinonsHealthAbility(10)),
+    ])
+    game = Game(player_decks=[deck])
+
+    first_player, = game.players
+    game.start()
+    first_player_card, first_player_card_2, first_player_card_3 = first_player.hand
+    game.play(first_player, first_player_card)
+    game.play(first_player, first_player_card_2)
+
+    assert first_player_card.health == 2
+    assert first_player_card_2.health == 2
+    game.play(first_player, first_player_card_3)
+    assert first_player_card.health == 12
+    assert first_player_card_2.health == 12
+
+
+def test_increase_health_and_damage_spell():
+    deck = Deck([
+        MinionCard(name='minon 1', cost=0, attack=50, health=2),
+        MinionCard(name='minon 2', cost=0, attack=50, health=2),
+        AbilityCard(name='spell', cost=1, ability=SetMinonHealthAndDamage(10)),
+    ])
+    game = Game(player_decks=[deck])
+
+    first_player, = game.players
+    game.start()
+    first_player_card, first_player_card_2, first_player_card_3 = first_player.hand
+    game.play(first_player, first_player_card)
+    game.play(first_player, first_player_card_2)
+
+    assert first_player_card.health == 2
+    assert first_player_card.damage == 50
+    assert first_player_card_2.health == 2
+    assert first_player_card_2.damage == 50
+    game.play(first_player, first_player_card_3, first_player_card)
+    assert first_player_card.health == 10
+    assert first_player_card.damage == 10
+    assert first_player_card_2.health == 2
+    assert first_player_card_2.damage == 50
+
+
+def test_increase_health_and_damage_spell_no_target():
+    deck = Deck([
+        MinionCard(name='minon 1', cost=0, attack=50, health=2),
+        MinionCard(name='minon 2', cost=0, attack=50, health=2),
+        AbilityCard(name='spell', cost=1, ability=SetMinonHealthAndDamage(10)),
+    ])
+    game = Game(player_decks=[deck])
+
+    first_player, = game.players
+    game.start()
+    first_player_card, first_player_card_2, first_player_card_3 = first_player.hand
+    game.play(first_player, first_player_card)
+    game.play(first_player, first_player_card_2)
+
+    assert len(game.board.played_cards()) == 2
+    assert len(first_player.hand) == 1
+    with pytest.raises(TargetNotDefinedError):
+        game.play(first_player, first_player_card_3)
+    assert len(game.board.played_cards()) == 2
+    assert len(first_player.hand) == 1
+
+
+def test_deal_damage_spell(game):
+    game.NUMBERS_OF_START_CARDS = (1, 0)
+    deck = Deck([
+        MinionCard(name='minon 1', cost=0, attack=50, health=2),
+        MinionCard(name='minon 2', cost=0, attack=50, health=12),
+        AbilityCard(name='spell', cost=1, ability=DealDamage(10)),
+    ])
+    g = game(player_decks=[deck, deck])
+
+    first_player, second_player = g.players
+    g.start()
+    first_player_card, first_player_card_2 = first_player.hand
+    g.play(first_player, first_player_card)
+    g.play(first_player, first_player_card_2)
+    g.end_turn()
+
+    assert len(g.board.played_cards(first_player)) == 2
+    assert first_player_card_2.health == 12
+    g.play(second_player, second_player.hand[0])
+    assert len(g.board.played_cards(first_player)) == 1
+    assert first_player_card_2.health == 2

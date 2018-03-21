@@ -1,19 +1,19 @@
 import random
 from typing import Iterable, List, Union
-from pyheart.exceptions import DeadCardError, EmptyDeckError, CardCannotAttackError
+from pyheart.exceptions import DeadCardError, EmptyDeckError, CardCannotAttackError, TargetNotDefinedError
 
 
 class Ability:
-    def apply(self, card: 'MinionCard', phase_name: str):
+    def apply(self, card: 'Card', phase_name: str, **kwargs):
         phase_method_name = f'_{phase_name}_phase'
-        getattr(self, phase_method_name, self.__default_method)(card)
+        getattr(self, phase_method_name, self.__default_method)(card=card, **kwargs)
 
-    def __default_method(self, *args, **kwargs):
+    def __default_method(self, **kwargs):
         pass
 
 
 class ChargeAbility(Ability):
-    def _init_phase(self, card: 'MinionCard'):
+    def _init_phase(self, card: 'MinionCard', **kwargs):
         card.can_attack = True
 
 
@@ -21,8 +21,41 @@ class IncreaseDamageAbility(Ability):
     def __init__(self, value: int):
         self._val = value
 
-    def _play_phase(self, card: 'MinionCard'):
+    def _play_phase(self, card: 'MinionCard', **kwargs):
         card.damage += self._val
+
+
+class IncreaseMinonsHealthAbility(Ability):
+    def __init__(self, value: int):
+        self.value = value
+
+    def _play_phase(self, board: 'Board', player: 'Player', **kwargs):
+        for card in board.played_cards(player):
+            card.health += self.value
+
+
+class SetMinonHealthAndDamage(Ability):
+    def __init__(self, value: int):
+        self.value = value
+
+    def _play_phase(self, card: 'Card', target: 'MinionCard', **kwargs):
+        try:
+            target.health = self.value
+            target.damage = self.value
+        except AttributeError:
+            raise TargetNotDefinedError('You have to pass target, to play {0}'.format(card))
+
+
+class DealDamage(Ability):
+    def __init__(self, value: int):
+        self.value = value
+
+    def _init_phase(self, card: 'AbilityCard', **kwargs):
+        card.damage = self.value
+
+    def _play_phase(self, card: 'AbilityCard', board: 'Board', player: 'Player', **kwargs):
+        for victim in board.enemy_cards(player):
+            board.attack(card, victim)
 
 
 class Card:
@@ -31,16 +64,12 @@ class Card:
         self.cost = cost
         self._was_played = False
         self.ability = ability
+        self.ability.apply(self, phase_name='init')
 
-    @property
-    def was_played(self):
-        return self._was_played
-
-    @was_played.setter
-    def was_played(self, value):
-        self._was_played = value
-        if value:
-            self.ability.apply(self, phase_name='play')
+    def play(self, **kwargs):
+        if not self._was_played:
+            self.ability.apply(self, phase_name='play', **kwargs)
+            self._was_played = True
 
     def __str__(self):
         return self.name
@@ -49,13 +78,29 @@ class Card:
         return '<{0.__class__.__name__}: {0.name}>'.format(self)
 
 
+class AbilityCard(Card):
+    def __init__(self, name: str, cost: int, ability: Ability):
+        self.damage = 0
+        super(AbilityCard, self).__init__(name, cost, ability)
+
+    def attack(self, victim: Union['MinionCard', 'Player']) -> List['MinionCard']:
+        try:
+            victim.health -= self.damage
+        except DeadCardError:
+            return [victim]
+        return []
+
+
 class MinionCard(Card):
     def __init__(self, name: str, cost: int, attack: int, health: int, ability: Ability = Ability()):
-        super(MinionCard, self).__init__(name, cost, ability)
         self.damage = attack
         self._health = health
         self.can_attack = False
-        self.ability.apply(self, phase_name='init')
+        super(MinionCard, self).__init__(name, cost, ability)
+
+    def play(self, player: 'Player', board: 'Board', **kwargs):
+        board.play_card(player=player, card=self)
+        super(MinionCard, self).play(**kwargs)
 
     @property
     def health(self):
@@ -132,13 +177,26 @@ class DefaultDeck(Deck):
         dict(name='Aberration', cost=1, attack=1, health=1, ability=ChargeAbility()),
         # https://www.hearthpwn.com/cards/77024-abusive-sergeant
         dict(name='Abusive Sergeant', cost=1, attack=2, health=1, ability=IncreaseDamageAbility(2)),
+        # https://www.hearthpwn.com/cards/49823-goldthorn
+        dict(name='Goldthorn', cost=10, ability=IncreaseMinonsHealthAbility(6)),
+        # https://www.hearthpwn.com/cards/55455-dinosize
+        dict(name='Dinosize', cost=8, ability=SetMinonHealthAndDamage(10)),
+        # https://www.hearthpwn.com/cards/44-flamestrike
+        dict(name='Flamestrike', cost=7, ability=DealDamage(4)),
     )
 
     NUMBER_OF_COPIES = 2
 
     def __init__(self):
         cards = [
-            MinionCard(**card_info)
+            self._construct_card(card_info)
             for card_info in self.CARDS * self.NUMBER_OF_COPIES
         ]
         super(DefaultDeck, self).__init__(cards)
+        self.shuffle()
+
+    @staticmethod
+    def _construct_card(card_info):
+        if not all(key in card_info for key in ['attack', 'health']):
+            return AbilityCard(**card_info)
+        return MinionCard(**card_info)

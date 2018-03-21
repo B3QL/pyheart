@@ -1,4 +1,4 @@
-from typing import Iterable, Union
+from typing import Iterable, Union, List
 
 from pyheart.cards import Deck, DefaultDeck, Card, MinionCard
 from pyheart.exceptions import (
@@ -60,7 +60,7 @@ class Player:
     def current_mana(self, value):
         self._current_mana = min(value, self.MAX_MANA_LEVEL)
 
-    def play(self, card: Card):
+    def play(self, card: Card, target: MinionCard):
         if card not in self._hand:
             raise MissingCardError("Card {0} is not in player's hand".format(card))
 
@@ -68,10 +68,9 @@ class Player:
             raise NotEnoughManaError(
                 "Card {0} cost [{0.cost}] is bigger than available player's mana [{1.mana}]".format(card, self)
             )
-        self._board.play_card(player=self, card=card)
+        card.play(player=self, board=self._board, target=target)
         self.used_mana += card.cost
         self._hand.remove(card)
-        card.was_played = True
 
     def attack(self, attacker: Card, victim: Union[MinionCard, 'Player']):
         if attacker not in self._board.played_cards(self):
@@ -105,23 +104,23 @@ class Board:
             raise TooManyCardsError('Player can have only {0} cards on board'.format(self.MAX_CARDS_PER_PLAYER))
         self._played_cards[card] = player
 
-    def attack(self, attacker: MinionCard, victim: Union[MinionCard, Player]):
-        attacker_player = self._played_cards[attacker]
-        if victim in set(self._played_cards.values()):
-            victim_player = victim
-        else:
-            victim_player = self._played_cards.get(victim, attacker_player)
-
-        if attacker_player == victim_player:
-            raise MissingCardError('{0} cannot attack {1} card'.format(attacker, victim))
+    def attack(self, attacker: Union[MinionCard, 'AbilityCard'], victim: Union[MinionCard, Player]):
+        try:
+            self._played_cards[victim]
+        except KeyError:
+            if victim not in set(self._played_cards.values()):
+                raise MissingCardError('{0} cannot attack {1} card'.format(attacker, victim))
 
         for dead_card in attacker.attack(victim):
             del self._played_cards[dead_card]
 
-    def played_cards(self, player: Player=None):
+    def played_cards(self, player: Player=None) -> List[MinionCard]:
         if player:
             return list(k for k, v in self._played_cards.items() if v == player)
         return list(self._played_cards)
+
+    def enemy_cards(self, player: Player) -> List[MinionCard]:
+        return list(k for k, v in self._played_cards.items() if v != player)
 
     def __len__(self):
         return len(self.played_cards())
@@ -186,6 +185,6 @@ class Game:
         self._check_state(player)
         self.current_player.attack(attacker, victim)
 
-    def play(self, player: Player, card: Card):
+    def play(self, player: Player, card: Card, target: MinionCard = None):
         self._check_state(player)
-        self.current_player.play(card)
+        self.current_player.play(card, target)

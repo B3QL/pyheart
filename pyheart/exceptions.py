@@ -33,3 +33,7 @@ class InvalidPlayerTurnError(Exception):
 
 class CardCannotAttackError(Exception):
     pass
+
+
+class TargetNotDefinedError(Exception):
+    pass
