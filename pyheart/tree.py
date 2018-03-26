@@ -2,7 +2,7 @@ import random
 from copy import deepcopy
 from math import sqrt, log
 from functools import partial
-from typing import Iterator, Callable, Optional
+from typing import Iterator, Callable, Optional, TypeVar
 
 from pyheart.exceptions import InvalidActionError
 from pyheart.game import Game
@@ -67,6 +67,9 @@ class AttackNode(Node):
     def apply(self, game_state):
         game_state.attack(self.player, self.attacker, self.victim)
 
+    def __repr__(self) -> str:
+        return '<{0.__class__.__name__} attacker: {0.attacker!r} victim: {0.victim!r}>'.format(self)
+
 
 class PlayCartNode(Node):
     def __init__(self, player, card, target=None):
@@ -77,6 +80,9 @@ class PlayCartNode(Node):
 
     def apply(self, game_state: 'Game'):
         game_state.play(self.player, self.card, self.target)
+
+    def __repr__(self) -> str:
+        return '<{0.__class__.__name__} card: {0.card!r} target: {0.target!r}>'.format(self)
 
 
 class EndTurnNode(Node):
@@ -90,49 +96,55 @@ class EndTurnNode(Node):
 #     def is_terminal(self):
 #         return True
 
+T = TypeVar('T')
+
 
 class ActionGenerator:
     def __init__(self, game_state: Game):
         self.game_state = game_state
-        self.actions_generators = [self.attack_action(), self.play_action(), self.endturn_action()]
 
-    def random_action(self) -> Node:
-        for action in self.action_generator():
-            game = deepcopy(self.game_state)
-            try:
-                action.apply(game)
-                return action
-            except InvalidActionError:
-                continue
+    def _is_valid_action(self, action: Optional[Node]) -> bool:
+        if action is None:
+            return False
 
-    def action_generator(self) -> Iterator[Node]:
-        if not self.actions_generators:
-            raise StopIteration
-
-        action_generator = random.choice(self.actions_generators)
+        game = deepcopy(self.game_state)
         try:
-            node = next(action_generator)
-            yield node
-        except StopIteration:
-            self.actions_generators.remove(action_generator)
-            yield from self.action_generator()
+            action.apply(game)
+            return True
+        except InvalidActionError:
+            return False
 
-    def attack_action(self) -> Iterator[AttackNode]:
+    def _handle_invalid_actions(self, generator: Iterator[T]) -> Iterator[T]:
+        all_actions = generator
+        while True:
+            action = next(all_actions)
+            if self._is_valid_action(action):
+                yield action
+
+    def attack_actions(self) -> Iterator[AttackNode]:
+        actions_generator = self._all_attack_actions()
+        yield from self._handle_invalid_actions(actions_generator)
+
+    def _all_attack_actions(self) -> Iterator[AttackNode]:
         board = self.game_state.board
         player = self.game_state.current_player
         player_cards = board.played_cards(player)
         random.shuffle(player_cards)
 
         enemy = self.game_state.next_player
-        enemy_cards = board.played_cards(enemy)
-        enemy_targets = enemy_cards + [enemy]
+        enemy_targets = board.played_cards(enemy)
+        enemy_targets.append(enemy)
         random.shuffle(enemy_targets)
 
         for attacker in player_cards:
             for victim in enemy_targets:
                 yield AttackNode(player, attacker, victim)
 
-    def play_action(self) -> Iterator[PlayCartNode]:
+    def play_actions(self) -> Iterator[PlayCartNode]:
+        actions_generator = self._all_play_actions()
+        yield from self._handle_invalid_actions(actions_generator)
+
+    def _all_play_actions(self) -> Iterator[PlayCartNode]:
         player = self.game_state.current_player
         hand = player.hand
         random.shuffle(hand)
@@ -143,6 +155,8 @@ class ActionGenerator:
         for card in hand:
             for target in player_cards:
                 yield PlayCartNode(player, card, target)
+            else:
+                yield PlayCartNode(player, card)
 
     def endturn_action(self) -> Iterator[EndTurnNode]:
         yield EndTurnNode()
