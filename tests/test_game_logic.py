@@ -1,6 +1,4 @@
 import pytest
-
-from pyheart import Game
 from pyheart.cards import (
     Deck,
     MinionCard,
@@ -21,127 +19,120 @@ from pyheart.exceptions import (
 )
 
 
-@pytest.fixture()
-def game():
-    start_cards = Game.NUMBERS_OF_START_CARDS
-    yield Game
-    Game.NUMBERS_OF_START_CARDS = start_cards
+def test_create_new_game(game):
+    g = game()
+    assert len(g.players) == 2
+    assert len(g.board) == 0
 
-
-def test_create_new_game():
-    game = Game()
-    assert len(game.players) == 2
-    assert len(game.board) == 0
-
-    first_player, second_player = game.players
+    first_player, second_player = g.players
     assert first_player.health == 20
     assert second_player.health == 20
     assert len(first_player.hand) == 3
     assert len(second_player.hand) == 4
 
 
-def test_play_card_to_board():
+def test_play_card_to_board(game):
     deck = Deck(MinionCard(name='test', cost=1, attack=1, health=1) for _ in range(10))
-    game = Game(player_decks=[deck])
-    player, = game.players
+    g = game(player_decks=[deck])
+    player, = g.players
     card = player.hand[0]
 
-    game.start()
+    g.start()
     assert player.mana == 1
-    game.play(player, card)
-    assert len(game.board) == 1
-    assert card in game.board.played_cards(player)
+    g.play(player, card)
+    assert len(g.board) == 1
+    assert card in g.board.played_cards(player)
     assert card not in player.hand
     assert player.mana == 0
 
 
-def test_not_enough_mana_to_play_card():
+def test_not_enough_mana_to_play_card(game):
     deck = Deck(MinionCard('test', cost=1000, attack=1, health=1) for _ in range(10))
-    game = Game(player_decks=[deck])
-    player, = game.players
+    g = game(player_decks=[deck])
+    player, = g.players
     card = player.hand[0]
-    game.start()
+    g.start()
 
     with pytest.raises(NotEnoughManaError):
-        game.play(player, card)
+        g.play(player, card)
 
-    assert len(game.board) == 0
-    assert card not in game.board.played_cards(player)
+    assert len(g.board) == 0
+    assert card not in g.board.played_cards(player)
     assert card in player.hand
 
 
-def test_card_played_but_not_in_hand():
+def test_card_played_but_not_in_hand(game):
     card = MinionCard('test', cost=1, attack=1, health=1)
-    game = Game()
-    player, _ = game.players
+    g = game()
+    player, _ = g.players
     player.hand = []
-    game.start()
+    g.start()
 
     with pytest.raises(MissingCardError):
-        game.play(player, card)
+        g.play(player, card)
 
-    assert len(game.board) == 0
-    assert card not in game.board.played_cards(player)
-
-
-def test_switch_players_after_turn_end():
-    game = Game()
-    first_player, second_player = game.players
-
-    assert game.current_player is None
-    game.start()
-
-    assert game.current_player == first_player
-    game.end_turn()
-    assert game.current_player == second_player
-    game.end_turn()
-    assert game.current_player == first_player
+    assert len(g.board) == 0
+    assert card not in g.board.played_cards(player)
 
 
-def test_player_deal_new_card_in_turn_start():
-    game = Game()
-    first_player, second_player = game.players
+def test_switch_players_after_turn_end(game):
+    g = game()
+    first_player, second_player = g.players
+
+    assert g.current_player is None
+    g.start()
+
+    assert g.current_player == first_player
+    g.end_turn()
+    assert g.current_player == second_player
+    g.end_turn()
+    assert g.current_player == first_player
+
+
+def test_player_deal_new_card_in_turn_start(game):
+    g = game()
+    first_player, second_player = g.players
 
     assert len(first_player.hand) == 3
     assert len(second_player.hand) == 4
-    game.start()
+    g.start()
     assert len(first_player.hand) == 4
     assert len(second_player.hand) == 4
-    game.end_turn()
+    g.end_turn()
     assert len(first_player.hand) == 4
     assert len(second_player.hand) == 5
-    game.end_turn()
+    g.end_turn()
     assert len(first_player.hand) == 5
     assert len(second_player.hand) == 5
-    game.end_turn()
+    g.end_turn()
     assert len(first_player.hand) == 5
     assert len(second_player.hand) == 6
 
 
-def test_fill_players_mana():
-    game = Game()
-    first_player, second_player = game.players
+def test_fill_players_mana(game):
+    g = game()
+    first_player, second_player = g.players
 
     assert first_player.mana == 0
     assert second_player.mana == 0
-    game.start()
+    g.start()
     assert first_player.mana == 1
     assert second_player.mana == 0
-    game.end_turn()
+    g.end_turn()
     assert first_player.mana == 1
     assert second_player.mana == 1
-    game.end_turn()
+    g.end_turn()
     assert first_player.mana == 2
     assert second_player.mana == 1
 
 
-def test_max_mana_not_above_10():
-    game = Game()
-    player, _ = game.players
-    game.start()
+def test_max_mana_not_above_10(game):
+    g = game()
+    player, _ = g.players
+    g.start()
     turns = range(30)
     for _ in turns:
-        game.end_turn()
+        g.end_turn()
 
     assert player.mana == 10
 
@@ -184,331 +175,331 @@ def test_to_many_minions_on_board(game):
         g.play(player, last_card)
 
 
-def test_player_cannot_do_action_until_its_turn():
-    game = Game()
-    first_player, second_player = game.players
-    game.start()
+def test_player_cannot_do_action_until_its_turn(game):
+    g = game()
+    first_player, second_player = g.players
+    g.start()
     card = second_player.hand[0]
 
     with pytest.raises(InvalidPlayerTurnError):
-        game.play(second_player, card)
+        g.play(second_player, card)
 
 
-def test_only_played_minion_can_attack():
+def test_only_played_minion_can_attack(game):
     deck = Deck(MinionCard(name='test', cost=1, attack=1, health=2) for _ in range(10))
-    game = Game(player_decks=[deck, deck])
-    first_player, second_player = game.players
-    game.start()
+    g = game(player_decks=[deck, deck])
+    first_player, second_player = g.players
+    g.start()
 
     first_player_card = first_player.hand[0]
-    game.play(first_player, first_player_card)
-    game.end_turn()
+    g.play(first_player, first_player_card)
+    g.end_turn()
 
     second_player_card = second_player.hand[0]
     with pytest.raises(MissingCardError):
-        game.attack(second_player, second_player_card, first_player_card)
+        g.attack(second_player, second_player_card, first_player_card)
 
 
-def test_player_cannot_attack_without_turn():
+def test_player_cannot_attack_without_turn(game):
     deck = Deck(MinionCard(name='test', cost=1, attack=1, health=2) for _ in range(10))
-    game = Game(player_decks=[deck, deck])
-    first_player, second_player = game.players
-    game.start()
+    g = game(player_decks=[deck, deck])
+    first_player, second_player = g.players
+    g.start()
 
     first_player_card = first_player.hand[0]
-    game.play(first_player, first_player_card)
-    game.end_turn()
+    g.play(first_player, first_player_card)
+    g.end_turn()
 
     second_player_card = second_player.hand[0]
-    game.play(second_player, second_player_card)
+    g.play(second_player, second_player_card)
 
     with pytest.raises(InvalidPlayerTurnError):
-        game.attack(first_player, first_player_card, second_player_card)
+        g.attack(first_player, first_player_card, second_player_card)
 
 
-def test_simple_minion_attack():
+def test_simple_minion_attack(game):
     deck = Deck(MinionCard(name='test', cost=1, attack=1, health=2) for _ in range(10))
-    game = Game(player_decks=[deck, deck])
-    first_player, second_player = game.players
+    g = game(player_decks=[deck, deck])
+    first_player, second_player = g.players
 
-    game.start()
+    g.start()
 
     first_player_card = first_player.hand[0]
-    game.play(first_player, first_player_card)
-    game.end_turn()
+    g.play(first_player, first_player_card)
+    g.end_turn()
 
     second_player_card = second_player.hand[0]
-    game.play(second_player, second_player_card)
-    game.end_turn()
+    g.play(second_player, second_player_card)
+    g.end_turn()
 
-    game.attack(first_player, first_player_card, second_player_card)
+    g.attack(first_player, first_player_card, second_player_card)
 
     assert first_player_card.health == 1
     assert second_player_card.health == 1
-    assert len(game.board) == 2
+    assert len(g.board) == 2
 
 
-def test_minion_removed_from_board_after_die():
+def test_minion_removed_from_board_after_die(game):
     deck = Deck(MinionCard(name='test', cost=1, attack=10, health=2) for _ in range(10))
-    game = Game(player_decks=[deck, deck])
-    first_player, second_player = game.players
-    game.start()
+    g = game(player_decks=[deck, deck])
+    first_player, second_player = g.players
+    g.start()
     first_player_card = first_player.hand[0]
     second_player_card = second_player.hand[0]
 
-    game.play(first_player, first_player_card)
-    game.end_turn()
+    g.play(first_player, first_player_card)
+    g.end_turn()
 
-    game.play(second_player, second_player_card)
-    game.end_turn()
+    g.play(second_player, second_player_card)
+    g.end_turn()
 
-    assert len(game.board) == 2
-    game.attack(first_player, first_player_card, second_player_card)
-    assert len(game.board) == 0
+    assert len(g.board) == 2
+    g.attack(first_player, first_player_card, second_player_card)
+    assert len(g.board) == 0
 
 
-def test_simple_minion_cannot_attack_in_played_turn():
+def test_simple_minion_cannot_attack_in_played_turn(game):
     deck = Deck(MinionCard(name='test', cost=1, attack=10, health=2) for _ in range(10))
-    game = Game(player_decks=[deck, deck])
-    first_player, second_player = game.players
-    game.start()
+    g = game(player_decks=[deck, deck])
+    first_player, second_player = g.players
+    g.start()
     first_player_card = first_player.hand[0]
     second_player_card = second_player.hand[0]
 
-    game.play(first_player, first_player_card)
-    game.end_turn()
+    g.play(first_player, first_player_card)
+    g.end_turn()
 
-    game.play(second_player, second_player_card)
+    g.play(second_player, second_player_card)
     with pytest.raises(CardCannotAttackError):
-        game.attack(second_player, second_player_card, first_player_card)
+        g.attack(second_player, second_player_card, first_player_card)
 
 
-def test_minon_cannot_attack_twice():
+def test_minon_cannot_attack_twice(game):
     deck = Deck(MinionCard(name='test', cost=1, attack=1, health=2) for _ in range(10))
-    game = Game(player_decks=[deck, deck])
-    first_player, second_player = game.players
-    game.start()
+    g = game(player_decks=[deck, deck])
+    first_player, second_player = g.players
+    g.start()
     first_player_card = first_player.hand[0]
     second_player_card = second_player.hand[0]
 
-    game.play(first_player, first_player_card)
-    game.end_turn()
+    g.play(first_player, first_player_card)
+    g.end_turn()
 
-    game.play(second_player, second_player_card)
-    game.end_turn()
+    g.play(second_player, second_player_card)
+    g.end_turn()
 
-    game.attack(first_player, first_player_card, second_player_card)
+    g.attack(first_player, first_player_card, second_player_card)
     with pytest.raises(CardCannotAttackError):
-        game.attack(first_player, first_player_card, second_player_card)
+        g.attack(first_player, first_player_card, second_player_card)
 
 
-def test_attack_player():
+def test_attack_player(game):
     deck = Deck(MinionCard(name='test', cost=1, attack=10, health=2) for _ in range(10))
-    game = Game(player_decks=[deck, deck])
-    first_player, second_player = game.players
-    game.start()
+    g = game(player_decks=[deck, deck])
+    first_player, second_player = g.players
+    g.start()
     first_player_card = first_player.hand[0]
     second_player_card = second_player.hand[0]
 
-    game.play(first_player, first_player_card)
-    game.end_turn()
+    g.play(first_player, first_player_card)
+    g.end_turn()
 
-    game.play(second_player, second_player_card)
-    game.end_turn()
+    g.play(second_player, second_player_card)
+    g.end_turn()
 
     assert second_player.health == 20
-    game.attack(first_player, first_player_card, second_player)
+    g.attack(first_player, first_player_card, second_player)
     assert second_player.health == 10
 
 
-def test_attack_player_not_in_turn():
+def test_attack_player_not_in_turn(game):
     deck = Deck(MinionCard(name='test', cost=1, attack=1, health=2) for _ in range(10))
-    game = Game(player_decks=[deck, deck])
-    first_player, second_player = game.players
-    game.start()
+    g = game(player_decks=[deck, deck])
+    first_player, second_player = g.players
+    g.start()
     first_player_card = first_player.hand[0]
     second_player_card = second_player.hand[0]
 
-    game.play(first_player, first_player_card)
-    game.end_turn()
+    g.play(first_player, first_player_card)
+    g.end_turn()
 
-    game.play(second_player, second_player_card)
-    game.end_turn()
+    g.play(second_player, second_player_card)
+    g.end_turn()
 
-    game.end_turn()
+    g.end_turn()
     with pytest.raises(InvalidPlayerTurnError):
-        game.attack(first_player, first_player_card, second_player)
+        g.attack(first_player, first_player_card, second_player)
 
 
-def test_attack_player_twice_with_same_card():
+def test_attack_player_twice_with_same_card(game):
     deck = Deck(MinionCard(name='test', cost=1, attack=10, health=2) for _ in range(10))
-    game = Game(player_decks=[deck, deck])
-    first_player, second_player = game.players
-    game.start()
+    g = game(player_decks=[deck, deck])
+    first_player, second_player = g.players
+    g.start()
     first_player_card = first_player.hand[0]
     second_player_card = second_player.hand[0]
 
-    game.play(first_player, first_player_card)
-    game.end_turn()
+    g.play(first_player, first_player_card)
+    g.end_turn()
 
-    game.play(second_player, second_player_card)
-    game.end_turn()
+    g.play(second_player, second_player_card)
+    g.end_turn()
 
     assert second_player.health == 20
-    game.attack(first_player, first_player_card, second_player)
+    g.attack(first_player, first_player_card, second_player)
     assert second_player.health == 10
 
     with pytest.raises(CardCannotAttackError):
-        game.attack(first_player, first_player_card, second_player)
+        g.attack(first_player, first_player_card, second_player)
 
     assert second_player.health == 10
 
 
-def test_attack_player_not_played_card():
+def test_attack_player_not_played_card(game):
     deck = Deck(MinionCard(name='test', cost=1, attack=1, health=2) for _ in range(10))
-    game = Game(player_decks=[deck, deck])
-    first_player, second_player = game.players
-    game.start()
+    g = game(player_decks=[deck, deck])
+    first_player, second_player = g.players
+    g.start()
     first_player_card = first_player.hand[0]
     second_player_card = second_player.hand[0]
 
-    game.end_turn()
+    g.end_turn()
 
-    game.play(second_player, second_player_card)
-    game.end_turn()
+    g.play(second_player, second_player_card)
+    g.end_turn()
 
     with pytest.raises(MissingCardError):
-        game.attack(first_player, first_player_card, second_player)
+        g.attack(first_player, first_player_card, second_player)
 
 
-def test_kill_player():
+def test_kill_player(game):
     deck = Deck(MinionCard(name='test', cost=1, attack=50, health=2) for _ in range(10))
-    game = Game(player_decks=[deck, deck])
-    first_player, second_player = game.players
-    game.start()
+    g = game(player_decks=[deck, deck])
+    first_player, second_player = g.players
+    g.start()
     first_player_card = first_player.hand[0]
     second_player_card = second_player.hand[0]
 
-    game.play(first_player, first_player_card)
-    game.end_turn()
+    g.play(first_player, first_player_card)
+    g.end_turn()
 
-    game.play(second_player, second_player_card)
-    game.end_turn()
+    g.play(second_player, second_player_card)
+    g.end_turn()
 
     assert second_player.health == 20
     with pytest.raises(DeadPlayerError):
-        game.attack(first_player, first_player_card, second_player)
+        g.attack(first_player, first_player_card, second_player)
 
 
-def test_minion_card_charge_ability_attack_card():
+def test_minion_card_charge_ability_attack_card(game):
     deck = Deck(MinionCard(name='test', cost=1, attack=10, health=2, ability=ChargeAbility()) for _ in range(10))
-    game = Game(player_decks=[deck, deck])
-    first_player, second_player = game.players
-    game.start()
+    g = game(player_decks=[deck, deck])
+    first_player, second_player = g.players
+    g.start()
     first_player_card = first_player.hand[0]
     second_player_card = second_player.hand[0]
 
-    game.play(first_player, first_player_card)
-    game.end_turn()
+    g.play(first_player, first_player_card)
+    g.end_turn()
 
-    game.play(second_player, second_player_card)
-    game.attack(second_player, second_player_card, first_player_card)
+    g.play(second_player, second_player_card)
+    g.attack(second_player, second_player_card, first_player_card)
 
 
-def test_minion_card_charge_ability_attack_player():
+def test_minion_card_charge_ability_attack_player(game):
     deck = Deck(MinionCard(name='test', cost=1, attack=10, health=2, ability=ChargeAbility()) for _ in range(10))
-    game = Game(player_decks=[deck, deck])
-    first_player, second_player = game.players
-    game.start()
+    g = game(player_decks=[deck, deck])
+    first_player, second_player = g.players
+    g.start()
     first_player_card = first_player.hand[0]
     second_player_card = second_player.hand[0]
 
-    game.play(first_player, first_player_card)
-    game.end_turn()
+    g.play(first_player, first_player_card)
+    g.end_turn()
 
-    game.play(second_player, second_player_card)
-    game.attack(second_player, second_player_card, first_player)
+    g.play(second_player, second_player_card)
+    g.attack(second_player, second_player_card, first_player)
 
 
-def test_minion_card_increase_attack_ability():
+def test_minion_card_increase_attack_ability(game):
     deck = Deck(
         MinionCard(name='test', cost=1, attack=1, health=2, ability=IncreaseDamageAbility(10)) for _ in range(10)
     )
-    game = Game(player_decks=[deck, deck])
-    first_player, _ = game.players
-    game.start()
+    g = game(player_decks=[deck, deck])
+    first_player, _ = g.players
+    g.start()
     first_player_card = first_player.hand[0]
 
     assert first_player_card.damage == 1
-    game.play(first_player, first_player_card)
+    g.play(first_player, first_player_card)
     assert first_player_card.damage == 11
 
 
-def test_increase_minions_health_spell():
+def test_increase_minions_health_spell(game):
     deck = Deck([
         MinionCard(name='minon 1', cost=0, attack=50, health=2),
         MinionCard(name='minon 2', cost=0, attack=50, health=2),
         AbilityCard(name='spell', cost=1, ability=IncreaseMinonsHealthAbility(10)),
     ])
-    game = Game(player_decks=[deck])
+    g = game(player_decks=[deck])
 
-    first_player, = game.players
-    game.start()
+    first_player, = g.players
+    g.start()
     first_player_card, first_player_card_2, first_player_card_3 = first_player.hand
-    game.play(first_player, first_player_card)
-    game.play(first_player, first_player_card_2)
+    g.play(first_player, first_player_card)
+    g.play(first_player, first_player_card_2)
 
     assert first_player_card.health == 2
     assert first_player_card_2.health == 2
-    game.play(first_player, first_player_card_3)
+    g.play(first_player, first_player_card_3)
     assert first_player_card.health == 12
     assert first_player_card_2.health == 12
 
 
-def test_increase_health_and_damage_spell():
+def test_increase_health_and_damage_spell(game):
     deck = Deck([
         MinionCard(name='minon 1', cost=0, attack=50, health=2),
         MinionCard(name='minon 2', cost=0, attack=50, health=2),
         AbilityCard(name='spell', cost=1, ability=SetMinonHealthAndDamage(10)),
     ])
-    game = Game(player_decks=[deck])
+    g = game(player_decks=[deck])
 
-    first_player, = game.players
-    game.start()
+    first_player, = g.players
+    g.start()
     first_player_card, first_player_card_2, first_player_card_3 = first_player.hand
-    game.play(first_player, first_player_card)
-    game.play(first_player, first_player_card_2)
+    g.play(first_player, first_player_card)
+    g.play(first_player, first_player_card_2)
 
     assert first_player_card.health == 2
     assert first_player_card.damage == 50
     assert first_player_card_2.health == 2
     assert first_player_card_2.damage == 50
-    game.play(first_player, first_player_card_3, first_player_card)
+    g.play(first_player, first_player_card_3, first_player_card)
     assert first_player_card.health == 10
     assert first_player_card.damage == 10
     assert first_player_card_2.health == 2
     assert first_player_card_2.damage == 50
 
 
-def test_increase_health_and_damage_spell_no_target():
+def test_increase_health_and_damage_spell_no_target(game):
     deck = Deck([
         MinionCard(name='minon 1', cost=0, attack=50, health=2),
         MinionCard(name='minon 2', cost=0, attack=50, health=2),
         AbilityCard(name='spell', cost=1, ability=SetMinonHealthAndDamage(10)),
     ])
-    game = Game(player_decks=[deck])
+    g = game(player_decks=[deck])
 
-    first_player, = game.players
-    game.start()
+    first_player, = g.players
+    g.start()
     first_player_card, first_player_card_2, first_player_card_3 = first_player.hand
-    game.play(first_player, first_player_card)
-    game.play(first_player, first_player_card_2)
+    g.play(first_player, first_player_card)
+    g.play(first_player, first_player_card_2)
 
-    assert len(game.board.played_cards()) == 2
+    assert len(g.board.played_cards()) == 2
     assert len(first_player.hand) == 1
     with pytest.raises(TargetNotDefinedError):
-        game.play(first_player, first_player_card_3)
-    assert len(game.board.played_cards()) == 2
+        g.play(first_player, first_player_card_3)
+    assert len(g.board.played_cards()) == 2
     assert len(first_player.hand) == 1
 
 
