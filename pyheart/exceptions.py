@@ -1,16 +1,20 @@
+class InvalidActionError(Exception):
+    pass
+
+
 class DeadCardError(Exception):
     pass
 
 
-class TooManyCardsError(Exception):
+class TooManyCardsError(InvalidActionError):
     pass
 
 
-class MissingCardError(Exception):
+class MissingCardError(InvalidActionError):
     pass
 
 
-class NotEnoughManaError(Exception):
+class NotEnoughManaError(InvalidActionError):
     pass
 
 
@@ -23,17 +27,17 @@ class DeadPlayerError(Exception):
     pass
 
 
-class GameNotStartedError(Exception):
+class GameNotStartedError(InvalidActionError):
     pass
 
 
-class InvalidPlayerTurnError(Exception):
+class InvalidPlayerTurnError(InvalidActionError):
     pass
 
 
-class CardCannotAttackError(Exception):
+class CardCannotAttackError(InvalidActionError):
     pass
 
 
-class TargetNotDefinedError(Exception):
+class TargetNotDefinedError(InvalidActionError):
     pass
