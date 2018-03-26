@@ -81,7 +81,7 @@ class PlayCartNode(Node):
 
 class EndTurnNode(Node):
     def apply(self, game_state: 'Game'):
-        game_state.end_turn()
+        game_state.endturn()
 
 
 # class GameOverNode(Node):

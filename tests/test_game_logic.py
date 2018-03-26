@@ -83,9 +83,9 @@ def test_switch_players_after_turn_end(game):
     g.start()
 
     assert g.current_player == first_player
-    g.end_turn()
+    g.endturn()
     assert g.current_player == second_player
-    g.end_turn()
+    g.endturn()
     assert g.current_player == first_player
 
 
@@ -98,13 +98,13 @@ def test_player_deal_new_card_in_turn_start(game):
     g.start()
     assert len(first_player.hand) == 4
     assert len(second_player.hand) == 4
-    g.end_turn()
+    g.endturn()
     assert len(first_player.hand) == 4
     assert len(second_player.hand) == 5
-    g.end_turn()
+    g.endturn()
     assert len(first_player.hand) == 5
     assert len(second_player.hand) == 5
-    g.end_turn()
+    g.endturn()
     assert len(first_player.hand) == 5
     assert len(second_player.hand) == 6
 
@@ -118,10 +118,10 @@ def test_fill_players_mana(game):
     g.start()
     assert first_player.mana == 1
     assert second_player.mana == 0
-    g.end_turn()
+    g.endturn()
     assert first_player.mana == 1
     assert second_player.mana == 1
-    g.end_turn()
+    g.endturn()
     assert first_player.mana == 2
     assert second_player.mana == 1
 
@@ -132,7 +132,7 @@ def test_max_mana_not_above_10(game):
     g.start()
     turns = range(30)
     for _ in turns:
-        g.end_turn()
+        g.endturn()
 
     assert player.mana == 10
 
@@ -148,10 +148,10 @@ def test_player_no_available_cards(game):
     assert player.health == start_health
     g.start()
     assert player.health == start_health - 1
-    g.end_turn()
+    g.endturn()
     assert player.health == start_health - 3
     with pytest.raises(DeadPlayerError):
-        g.end_turn()
+        g.endturn()
     assert player.health == 0
 
 
@@ -193,7 +193,7 @@ def test_only_played_minion_can_attack(game):
 
     first_player_card = first_player.hand[0]
     g.play(first_player, first_player_card)
-    g.end_turn()
+    g.endturn()
 
     second_player_card = second_player.hand[0]
     with pytest.raises(MissingCardError):
@@ -208,7 +208,7 @@ def test_player_cannot_attack_without_turn(game):
 
     first_player_card = first_player.hand[0]
     g.play(first_player, first_player_card)
-    g.end_turn()
+    g.endturn()
 
     second_player_card = second_player.hand[0]
     g.play(second_player, second_player_card)
@@ -226,11 +226,11 @@ def test_simple_minion_attack(game):
 
     first_player_card = first_player.hand[0]
     g.play(first_player, first_player_card)
-    g.end_turn()
+    g.endturn()
 
     second_player_card = second_player.hand[0]
     g.play(second_player, second_player_card)
-    g.end_turn()
+    g.endturn()
 
     g.attack(first_player, first_player_card, second_player_card)
 
@@ -248,10 +248,10 @@ def test_minion_removed_from_board_after_die(game):
     second_player_card = second_player.hand[0]
 
     g.play(first_player, first_player_card)
-    g.end_turn()
+    g.endturn()
 
     g.play(second_player, second_player_card)
-    g.end_turn()
+    g.endturn()
 
     assert len(g.board) == 2
     g.attack(first_player, first_player_card, second_player_card)
@@ -267,7 +267,7 @@ def test_simple_minion_cannot_attack_in_played_turn(game):
     second_player_card = second_player.hand[0]
 
     g.play(first_player, first_player_card)
-    g.end_turn()
+    g.endturn()
 
     g.play(second_player, second_player_card)
     with pytest.raises(CardCannotAttackError):
@@ -283,10 +283,10 @@ def test_minon_cannot_attack_twice(game):
     second_player_card = second_player.hand[0]
 
     g.play(first_player, first_player_card)
-    g.end_turn()
+    g.endturn()
 
     g.play(second_player, second_player_card)
-    g.end_turn()
+    g.endturn()
 
     g.attack(first_player, first_player_card, second_player_card)
     with pytest.raises(CardCannotAttackError):
@@ -302,10 +302,10 @@ def test_attack_player(game):
     second_player_card = second_player.hand[0]
 
     g.play(first_player, first_player_card)
-    g.end_turn()
+    g.endturn()
 
     g.play(second_player, second_player_card)
-    g.end_turn()
+    g.endturn()
 
     assert second_player.health == 20
     g.attack(first_player, first_player_card, second_player)
@@ -321,12 +321,12 @@ def test_attack_player_not_in_turn(game):
     second_player_card = second_player.hand[0]
 
     g.play(first_player, first_player_card)
-    g.end_turn()
+    g.endturn()
 
     g.play(second_player, second_player_card)
-    g.end_turn()
+    g.endturn()
 
-    g.end_turn()
+    g.endturn()
     with pytest.raises(InvalidPlayerTurnError):
         g.attack(first_player, first_player_card, second_player)
 
@@ -340,10 +340,10 @@ def test_attack_player_twice_with_same_card(game):
     second_player_card = second_player.hand[0]
 
     g.play(first_player, first_player_card)
-    g.end_turn()
+    g.endturn()
 
     g.play(second_player, second_player_card)
-    g.end_turn()
+    g.endturn()
 
     assert second_player.health == 20
     g.attack(first_player, first_player_card, second_player)
@@ -363,10 +363,10 @@ def test_attack_player_not_played_card(game):
     first_player_card = first_player.hand[0]
     second_player_card = second_player.hand[0]
 
-    g.end_turn()
+    g.endturn()
 
     g.play(second_player, second_player_card)
-    g.end_turn()
+    g.endturn()
 
     with pytest.raises(MissingCardError):
         g.attack(first_player, first_player_card, second_player)
@@ -381,10 +381,10 @@ def test_kill_player(game):
     second_player_card = second_player.hand[0]
 
     g.play(first_player, first_player_card)
-    g.end_turn()
+    g.endturn()
 
     g.play(second_player, second_player_card)
-    g.end_turn()
+    g.endturn()
 
     assert second_player.health == 20
     with pytest.raises(DeadPlayerError):
@@ -400,7 +400,7 @@ def test_minion_card_charge_ability_attack_card(game):
     second_player_card = second_player.hand[0]
 
     g.play(first_player, first_player_card)
-    g.end_turn()
+    g.endturn()
 
     g.play(second_player, second_player_card)
     g.attack(second_player, second_player_card, first_player_card)
@@ -415,7 +415,7 @@ def test_minion_card_charge_ability_attack_player(game):
     second_player_card = second_player.hand[0]
 
     g.play(first_player, first_player_card)
-    g.end_turn()
+    g.endturn()
 
     g.play(second_player, second_player_card)
     g.attack(second_player, second_player_card, first_player)
@@ -517,7 +517,7 @@ def test_deal_damage_spell(game):
     first_player_card, first_player_card_2 = first_player.hand
     g.play(first_player, first_player_card)
     g.play(first_player, first_player_card_2)
-    g.end_turn()
+    g.endturn()
 
     assert len(g.board.played_cards(first_player)) == 2
     assert first_player_card_2.health == 12

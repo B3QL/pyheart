@@ -164,9 +164,9 @@ class Game:
     def start(self):
         if not self._game_started:
             self._game_started = True
-            self.end_turn()
+            self.endturn()
 
-    def end_turn(self):
+    def endturn(self):
         if not self._game_started:
             raise GameNotStartedError('Action allowed only after game start')
         self._turn += 1
