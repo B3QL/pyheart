@@ -26,38 +26,38 @@ class Player:
         self._board = board
 
     @property
-    def hand(self):
+    def hand(self) -> List[Card]:
         return list(self._hand)
 
     @hand.setter
-    def hand(self, value):
+    def hand(self, value: int):
         self._hand = value
 
     @property
-    def health(self):
+    def health(self) -> int:
         return self._health
 
     @health.setter
-    def health(self, new_health):
+    def health(self, new_health: int):
         if new_health <= 0:
             self._health = 0
             raise DeadPlayerError("Player's health reaches 0 [{0}]".format(new_health))
         self._health = new_health
 
     @property
-    def mana(self):
+    def mana(self) -> int:
         return self._current_mana - self.used_mana
 
     @mana.setter
-    def mana(self, value):
+    def mana(self, value: int):
         self._current_mana = value
 
     @property
-    def current_mana(self):
+    def current_mana(self) -> int:
         return self._current_mana
 
     @current_mana.setter
-    def current_mana(self, value):
+    def current_mana(self, value: int):
         self._current_mana = min(value, self.MAX_MANA_LEVEL)
 
     def play(self, card: Card, target: MinionCard):
@@ -77,15 +77,19 @@ class Player:
             raise MissingCardError('{0} can not attack with not played {1} card'.format(self, attacker))
         self._board.attack(attacker, victim)
 
-    def take_cards(self, number):
+    def take_cards(self, number: int):
         try:
             new_card = self.deck.deal(number)
             self._hand.extend(new_card)
         except EmptyDeckError as e:
             self.health -= e.deal_attempt
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return '<{0.__class__.__name__} {0.name} mana: {0.mana}, health: {0.health}>'.format(self)
+
+    def __eq__(self, other: 'Player') -> bool:
+        attrs = ['__class__', 'name', 'health', 'mana', 'current_mana', 'hand', 'deck']
+        return all(getattr(self, a) == getattr(other, a) for a in attrs)
 
 
 class Board:
@@ -108,8 +112,9 @@ class Board:
         try:
             self._played_cards[victim]
         except KeyError:
-            if victim not in set(self._played_cards.values()):
-                raise MissingCardError('{0} cannot attack {1} card'.format(attacker, victim))
+            raise MissingCardError('{0} cannot attack {1} card'.format(attacker, victim))
+        except TypeError:
+            pass  # victim is an unhashable Player
 
         for dead_card in attacker.attack(victim):
             del self._played_cards[dead_card]

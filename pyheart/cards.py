@@ -1,15 +1,25 @@
 import random
+from uuid import uuid4
 from typing import Iterable, List, Union
 from pyheart.exceptions import DeadCardError, EmptyDeckError, CardCannotAttackError, TargetNotDefinedError
 
 
 class Ability:
+    def __init__(self, value: int = None):
+        self._val = value
+
     def apply(self, card: 'Card', phase_name: str, **kwargs):
         phase_method_name = f'_{phase_name}_phase'
         getattr(self, phase_method_name, self.__default_method)(card=card, **kwargs)
 
     def __default_method(self, **kwargs):
         pass
+
+    def __eq__(self, other: 'Ability') -> bool:
+        return self.__class__ == other.__class__ and self._val == other._val
+
+    def __hash__(self) -> int:
+        return hash(self.__class__) ^ hash(self._val)
 
 
 class ChargeAbility(Ability):
@@ -18,40 +28,28 @@ class ChargeAbility(Ability):
 
 
 class IncreaseDamageAbility(Ability):
-    def __init__(self, value: int):
-        self._val = value
-
     def _play_phase(self, card: 'MinionCard', **kwargs):
         card.damage += self._val
 
 
 class IncreaseMinonsHealthAbility(Ability):
-    def __init__(self, value: int):
-        self.value = value
-
     def _play_phase(self, board: 'Board', player: 'Player', **kwargs):
         for card in board.played_cards(player):
-            card.health += self.value
+            card.health += self._val
 
 
 class SetMinonHealthAndDamage(Ability):
-    def __init__(self, value: int):
-        self.value = value
-
     def _play_phase(self, card: 'Card', target: 'MinionCard', **kwargs):
         try:
-            target.health = self.value
-            target.damage = self.value
+            target.health = self._val
+            target.damage = self._val
         except AttributeError:
             raise TargetNotDefinedError('You have to pass target, to play {0}'.format(card))
 
 
 class DealDamage(Ability):
-    def __init__(self, value: int):
-        self.value = value
-
     def _init_phase(self, card: 'AbilityCard', **kwargs):
-        card.damage = self.value
+        card.damage = self._val
 
     def _play_phase(self, card: 'AbilityCard', board: 'Board', player: 'Player', **kwargs):
         for victim in board.enemy_cards(player):
@@ -60,6 +58,7 @@ class DealDamage(Ability):
 
 class Card:
     def __init__(self, name: str, cost: int, ability: Ability):
+        self._uuid = uuid4()
         self.name = name
         self.cost = cost
         self._was_played = False
@@ -71,11 +70,17 @@ class Card:
             self.ability.apply(self, phase_name='play', **kwargs)
             self._was_played = True
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return '<{0.__class__.__name__}: {0.name}>'.format(self)
+
+    def __eq__(self, other: 'Card') -> bool:
+        return self.__class__ == other.__class__ and self._uuid == other._uuid
+
+    def __hash__(self):
+        return hash(self.__class__) ^ hash(self._uuid)
 
 
 class AbilityCard(Card):
@@ -142,7 +147,7 @@ class Deck:
     def shuffle(self):
         random.shuffle(self.cards)
 
-    def deal(self, number: int=1)->Iterable[Card]:
+    def deal(self, number: int = 1)->Iterable[Card]:
         next_cards = self.cards[:number]
         self.cards = self.cards[number:]
         difference = number - len(next_cards)
@@ -154,8 +159,8 @@ class Deck:
     def __len__(self):
         return len(self.cards)
 
-    def __bool__(self):
-        return True
+    def __eq__(self, other: 'Deck') -> bool:
+        return self.__class__ == other.__class__ and self.cards == other.cards and self.empty_card == other.empty_card
 
     def __repr__(self):
         return '<{0.__class__.__name__} available cards: {1}>'.format(self, len(self))
