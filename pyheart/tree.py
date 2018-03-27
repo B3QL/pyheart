@@ -1,5 +1,4 @@
 import random
-from copy import deepcopy
 from math import sqrt, log
 from functools import partial
 from typing import Iterator, Callable, Optional, TypeVar
@@ -106,10 +105,8 @@ class ActionGenerator:
     def _is_valid_action(self, action: Optional[Node]) -> bool:
         if action is None:
             return False
-
-        game = deepcopy(self.game_state)
         try:
-            action.apply(game)
+            action.apply(self.game_state.copy())
             return True
         except InvalidActionError:
             return False
@@ -150,16 +147,26 @@ class ActionGenerator:
         random.shuffle(hand)
 
         player_cards = self.game_state.board.played_cards(player)
-        random.shuffle(player_cards)
-
+        player_cards.append(None)
         for card in hand:
+            random.shuffle(player_cards)
             for target in player_cards:
                 yield PlayCartNode(player, card, target)
-            else:
-                yield PlayCartNode(player, card)
 
     def endturn_action(self) -> Iterator[EndTurnNode]:
-        yield EndTurnNode()
+        action = EndTurnNode()
+        if self._is_valid_action(action):
+            yield action
+
+    def random_actions(self) -> Iterator[Node]:
+        available_generators = [self.play_actions(), self.attack_actions(), self.endturn_action()]
+        while available_generators:
+            index = random.randint(0, len(available_generators) - 1)
+            current_generator = available_generators[index]
+            try:
+                yield next(current_generator)
+            except StopIteration:
+                available_generators.remove(current_generator)
 
 
 class GameTree:
@@ -177,7 +184,7 @@ class GameTree:
 
     @property
     def game(self) -> Game:
-        return deepcopy(self._game)
+        return self._game.copy()
 
     def select_node(self, node: Node, game_state: Game) -> Node:
         node.visit()

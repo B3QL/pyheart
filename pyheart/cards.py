@@ -1,6 +1,12 @@
 import random
 from typing import Iterable, List, Union, Optional
-from pyheart.exceptions import DeadCardError, EmptyDeckError, CardCannotAttackError, TargetNotDefinedError
+from pyheart.exceptions import (
+    DeadCardError,
+    EmptyDeckError,
+    CardCannotAttackError,
+    TargetNotDefinedError,
+    InvalidTargetError
+)
 from pyheart.mixins import UniqueIdentifierMixin
 
 
@@ -98,7 +104,10 @@ class MinionCard(Card):
         self.can_attack = False
         super(MinionCard, self).__init__(name, cost, ability)
 
-    def play(self, player: 'Player', board: 'Board', **kwargs):
+    def play(self, player: 'Player', board: 'Board', target_id: Optional[str], **kwargs):
+        if target_id is not None:
+            raise InvalidTargetError('Minion card cannot target other cards')
+
         board.play_card(player=player, card=self)
         super(MinionCard, self).play(**kwargs)
 

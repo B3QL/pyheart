@@ -79,7 +79,7 @@ def test_switch_players_after_turn_end(game):
     g = game()
     first_player, second_player = g.players
 
-    assert g.current_player is None
+    assert g.current_player == first_player
     g.start()
 
     assert g.current_player == first_player

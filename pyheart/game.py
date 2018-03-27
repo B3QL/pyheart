@@ -1,3 +1,4 @@
+from copy import deepcopy
 from typing import Iterable, Union, List, Optional
 from collections import defaultdict
 
@@ -181,14 +182,16 @@ class Game:
         return self.players[turn % players_number]
 
     @property
+    def turn(self):
+        return max(self._turn, 0)
+
+    @property
     def current_player(self):
-        if self._turn < 0:
-            return None
-        return self._calculate_turn(self._turn)
+        return self._calculate_turn(self.turn)
 
     @property
     def next_player(self):
-        return self._calculate_turn(self._turn + 1)
+        return self._calculate_turn(self.turn + 1)
 
     def start(self):
         if not self._game_started:
@@ -228,3 +231,6 @@ class Game:
     def play(self, player: Player, card: Card, target: MinionCard = None):
         self._check_state(player)
         self.current_player.play(card.id, getattr(target, 'id', None))
+
+    def copy(self) -> 'Game':
+        return deepcopy(self)

@@ -41,3 +41,7 @@ class CardCannotAttackError(InvalidActionError):
 
 class TargetNotDefinedError(InvalidActionError):
     pass
+
+
+class InvalidTargetError(InvalidActionError):
+    pass
