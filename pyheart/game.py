@@ -1,4 +1,5 @@
-from typing import Iterable, Union, List
+from typing import Iterable, Union, List, Optional
+from collections import defaultdict
 
 from pyheart.cards import Deck, DefaultDeck, Card, MinionCard
 from pyheart.mixins import UniqueIdentifierMixin
@@ -24,16 +25,16 @@ class Player(UniqueIdentifierMixin):
         self._current_mana = 0
         self.used_mana = 0
         self.deck = deck
-        self._hand = list(deck.deal(cards_number))
+        self._hand = {card.id: card for card in deck.deal(cards_number)}
         self._board = board
 
     @property
     def hand(self) -> List[Card]:
-        return list(self._hand)
+        return list(self._hand.values())
 
     @hand.setter
-    def hand(self, value: int):
-        self._hand = value
+    def hand(self, cards: List[Card]):
+        self._hand = {card.id: card for card in cards}
 
     @property
     def health(self) -> int:
@@ -62,27 +63,27 @@ class Player(UniqueIdentifierMixin):
     def current_mana(self, value: int):
         self._current_mana = min(value, self.MAX_MANA_LEVEL)
 
-    def play(self, card: Card, target: MinionCard):
-        if card not in self._hand:
-            raise MissingCardError("Card {0} is not in player's hand".format(card))
+    def play(self, card_id: str, target_id: Optional[str]):
+        if card_id not in self._hand:
+            raise MissingCardError("Card {0} is not in player's hand".format(card_id))
 
+        card = self._hand[card_id]
         if card.cost > self.mana:
             raise NotEnoughManaError(
                 "Card {0} cost [{0.cost}] is bigger than available player's mana [{1.mana}]".format(card, self)
             )
-        card.play(player=self, board=self._board, target=target)
+        card.play(player=self, board=self._board, target_id=target_id)
         self.used_mana += card.cost
-        self._hand.remove(card)
+        del self._hand[card.id]
 
-    def attack(self, attacker: Card, victim: Union[MinionCard, 'Player']):
-        if attacker not in self._board.played_cards(self):
-            raise MissingCardError('{0} can not attack with not played {1} card'.format(self, attacker))
+    def attack(self, attacker_id: str, victim: Union['Player', str]):
+        attacker = self._board.get_card(attacker_id, player=self)
         self._board.attack(attacker, victim)
 
     def take_cards(self, number: int):
         try:
-            new_card = self.deck.deal(number)
-            self._hand.extend(new_card)
+            new_cards = {card.id: card for card in self.deck.deal(number)}
+            self._hand.update(new_cards)
         except EmptyDeckError as e:
             self.health -= e.deal_attempt
 
@@ -98,36 +99,62 @@ class Board:
     MAX_CARDS_PER_PLAYER = 7
 
     def __init__(self):
-        self._played_cards = {}
+        self._player_cards = defaultdict(set)
+        self._cards = {}
 
     def reset_cards(self, player: Player):
-        for card in self.played_cards(player):
-            card.can_attack = True
+        player_cards = self._player_cards[player.id]
+        for card_id in player_cards:
+            self._cards[card_id].can_attack = True
 
     def play_card(self, player: Player, card: Card):
         played_cards = self.played_cards(player)
         if len(played_cards) >= self.MAX_CARDS_PER_PLAYER:
             raise TooManyCardsError('Player can have only {0} cards on board'.format(self.MAX_CARDS_PER_PLAYER))
-        self._played_cards[card] = player
+        self._add_card(player, card)
 
-    def attack(self, attacker: Union[MinionCard, 'AbilityCard'], victim: Union[MinionCard, Player]):
+    def attack(self, attacker: MinionCard, victim: Union[str, Player]):
         try:
-            self._played_cards[victim]
+            victim = self._cards[victim]
         except KeyError:
-            raise MissingCardError('{0} cannot attack {1} card'.format(attacker, victim))
+            raise MissingCardError('{0} cannot attack not played {1} card'.format(attacker, victim))
         except TypeError:
             pass  # victim is an unhashable Player
 
         for dead_card in attacker.attack(victim):
-            del self._played_cards[dead_card]
+            self._remove_card(dead_card)
 
-    def played_cards(self, player: Player=None) -> List[MinionCard]:
+    def played_cards(self, player: Union[Player, str]=None) -> List[MinionCard]:
         if player:
-            return list(k for k, v in self._played_cards.items() if v == player)
-        return list(self._played_cards)
+            player_id = getattr(player, 'id', player)
+            player_cards = self._player_cards[player_id]
+            return list(map(lambda card_id: self._cards[card_id], player_cards))
+        return list(self._cards.values())
 
     def enemy_cards(self, player: Player) -> List[MinionCard]:
-        return list(k for k, v in self._played_cards.items() if v != player)
+        all_players = set(self._player_cards.keys())
+        enemy_player_id = all_players - {player.id}
+        return self.played_cards(enemy_player_id.pop())
+
+    def get_card(self, card_id: str, player: Player) -> MinionCard:
+        try:
+            if card_id not in self._player_cards[player.id]:
+                raise KeyError
+
+            return self._cards[card_id]
+        except KeyError:
+            raise MissingCardError('Card {0} not played'.format(self, card_id))
+
+    def _add_card(self, player: Player, card: Card):
+        self._player_cards[player.id].add(card.id)
+        self._cards[card.id] = card
+
+    def _remove_card(self, card: Card):
+        del self._cards[card.id]
+
+        # We can remove card from all players because id is globally unique
+        for player_cards in self._player_cards.values():
+            player_cards.discard(card.id)
 
     def __len__(self):
         return len(self.played_cards())
@@ -190,8 +217,14 @@ class Game:
 
     def attack(self, player: Player, attacker: MinionCard, victim: Union[MinionCard, Player]):
         self._check_state(player)
-        self.current_player.attack(attacker, victim)
+
+        victim = victim.id
+        players = {player.id: player for player in self.players}
+        if victim in players:
+            victim = players[victim]
+
+        self.current_player.attack(attacker.id, victim)
 
     def play(self, player: Player, card: Card, target: MinionCard = None):
         self._check_state(player)
-        self.current_player.play(card, target)
+        self.current_player.play(card.id, getattr(target, 'id', None))

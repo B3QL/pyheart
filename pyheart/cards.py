@@ -1,5 +1,5 @@
 import random
-from typing import Iterable, List, Union
+from typing import Iterable, List, Union, Optional
 from pyheart.exceptions import DeadCardError, EmptyDeckError, CardCannotAttackError, TargetNotDefinedError
 from pyheart.mixins import UniqueIdentifierMixin
 
@@ -39,12 +39,13 @@ class IncreaseMinonsHealthAbility(Ability):
 
 
 class SetMinonHealthAndDamage(Ability):
-    def _play_phase(self, card: 'Card', target: 'MinionCard', **kwargs):
-        try:
-            target.health = self._val
-            target.damage = self._val
-        except AttributeError:
+    def _play_phase(self, board: 'Board', player: 'Player', card: 'Card', target_id: Optional[str], **kwargs):
+        if target_id is None:
             raise TargetNotDefinedError('You have to pass target, to play {0}'.format(card))
+
+        target = board.get_card(target_id, player)
+        target.health = self._val
+        target.damage = self._val
 
 
 class DealDamage(Ability):
@@ -53,7 +54,7 @@ class DealDamage(Ability):
 
     def _play_phase(self, card: 'AbilityCard', board: 'Board', player: 'Player', **kwargs):
         for victim in board.enemy_cards(player):
-            board.attack(card, victim)
+            board.attack(card, victim.id)
 
 
 class Card(UniqueIdentifierMixin):
