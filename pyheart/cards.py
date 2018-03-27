@@ -1,7 +1,7 @@
 import random
-from uuid import uuid4
 from typing import Iterable, List, Union
 from pyheart.exceptions import DeadCardError, EmptyDeckError, CardCannotAttackError, TargetNotDefinedError
+from pyheart.mixins import UniqueIdentifierMixin
 
 
 class Ability:
@@ -56,9 +56,9 @@ class DealDamage(Ability):
             board.attack(card, victim)
 
 
-class Card:
+class Card(UniqueIdentifierMixin):
     def __init__(self, name: str, cost: int, ability: Ability):
-        self._uuid = uuid4()
+        super(Card, self).__init__()
         self.name = name
         self.cost = cost
         self._was_played = False
@@ -75,12 +75,6 @@ class Card:
 
     def __repr__(self) -> str:
         return '<{0.__class__.__name__}: {0.name}>'.format(self)
-
-    def __eq__(self, other: 'Card') -> bool:
-        return self.__class__ == other.__class__ and self._uuid == other._uuid
-
-    def __hash__(self):
-        return hash(self.__class__) ^ hash(self._uuid)
 
 
 class AbilityCard(Card):

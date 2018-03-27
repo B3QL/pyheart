@@ -1,6 +1,7 @@
 from typing import Iterable, Union, List
 
 from pyheart.cards import Deck, DefaultDeck, Card, MinionCard
+from pyheart.mixins import UniqueIdentifierMixin
 from pyheart.exceptions import (
     DeadPlayerError,
     EmptyDeckError,
@@ -12,11 +13,12 @@ from pyheart.exceptions import (
 )
 
 
-class Player:
+class Player(UniqueIdentifierMixin):
     HEALTH_LEVEL = 20
     MAX_MANA_LEVEL = 10
 
     def __init__(self, name: str, cards_number: int, deck: Deck, board: 'Board'):
+        super(Player, self).__init__()
         self.name = name
         self._health = self.HEALTH_LEVEL
         self._current_mana = 0
