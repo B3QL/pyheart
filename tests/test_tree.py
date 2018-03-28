@@ -131,3 +131,14 @@ def test_all_generate_actions_are_applicable(game):
 
     for action in available_actions:
         action.apply(g.copy())
+
+
+def test_playout(game):
+    g = game()
+    g.start()
+    action = None
+    for action in ActionGenerator(g, apply=True):
+        pass
+
+    assert action.is_terminal
+

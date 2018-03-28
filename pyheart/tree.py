@@ -1,9 +1,9 @@
 import random
 from math import sqrt, log
 from functools import partial
-from typing import Iterator, Callable, Optional, TypeVar
+from typing import Iterator, Callable, Optional
 
-from pyheart.exceptions import InvalidActionError
+from pyheart.exceptions import InvalidActionError, DeadPlayerError
 from pyheart.game import Game
 
 
@@ -13,6 +13,7 @@ class Node:
         self.children = []
         self.wins = 0
         self.looses = 0
+        self.is_terminal = False
 
     @property
     def nodes(self):
@@ -105,15 +106,6 @@ class EndTurnNode(Node):
         return '{0.player} ended turn'.format(self)
 
 
-# class GameOverNode(Node):
-#
-#     @property
-#     def is_terminal(self):
-#         return True
-
-T = TypeVar('T')
-
-
 class ActionGenerator:
     def __init__(self, game_state: Game, apply: bool = False):
         self.game_state = game_state
@@ -122,17 +114,24 @@ class ActionGenerator:
     def _is_valid_action(self, action: Optional[Node]) -> bool:
         if action is None:
             return False
+
         try:
             action.apply(self.game_state.copy())
-            return True
         except InvalidActionError:
             return False
+        return True
 
-    def _handle_invalid_actions(self, generator: Iterator[T]) -> Iterator[T]:
+    def _handle_invalid_actions(self, generator: Iterator[Node]) -> Iterator[Node]:
         all_actions = generator
         while True:
             action = next(all_actions)
-            if self._is_valid_action(action):
+            is_valid = True
+            try:
+                is_valid = self._is_valid_action(action)
+            except DeadPlayerError:
+                action.is_terminal = True
+
+            if is_valid:
                 yield action
 
     def attack_actions(self) -> Iterator[AttackNode]:
@@ -172,8 +171,8 @@ class ActionGenerator:
 
     def endturn_action(self) -> Iterator[EndTurnNode]:
         action = EndTurnNode(self.game_state.current_player)
-        if self._is_valid_action(action):
-            yield action
+        actions_generator = iter([action])
+        yield from self._handle_invalid_actions(actions_generator)
 
     def random_actions(self) -> Iterator[Node]:
         available_generators = [self.play_actions(), self.attack_actions(), self.endturn_action()]
@@ -188,13 +187,14 @@ class ActionGenerator:
     def __iter__(self):
         action_generator = self.random_actions()
         random_action = next(action_generator)
-        while random_action:
+        while not random_action.is_terminal:
             yield random_action
             if self.apply:
                 random_action.apply(self.game_state)
                 random_action = next(self.random_actions())
             else:
                 random_action = next(action_generator)
+        yield random_action
 
 
 class GameTree:

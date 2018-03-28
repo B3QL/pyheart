@@ -89,7 +89,8 @@ class Player(UniqueIdentifierMixin):
             self.health -= e.deal_attempt
 
     def __repr__(self) -> str:
-        return '<{0.__class__.__name__} {0.name} mana: {0.mana}, health: {0.health}>'.format(self)
+        fmt = '<{0.__class__.__name__} {0.name} mana: {0.mana}, health: {0.health}, hand: {1}>'
+        return fmt.format(self, len(self.hand))
 
     def __str__(self) -> str:
         return self.name
@@ -160,8 +161,12 @@ class Board:
         for player_cards in self._player_cards.values():
             player_cards.discard(card.id)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.played_cards())
+
+    def __repr__(self) -> str:
+        fmt = '<{0.__class__.__name__} all cards: {1}, players cards: {2}>'
+        return fmt.format(self, len(self._cards), tuple(len(cards) for cards in self._player_cards.values()))
 
 
 class Game:
