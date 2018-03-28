@@ -71,6 +71,7 @@ class Card(UniqueIdentifierMixin):
         self._was_played = False
         self.ability = ability
         self.ability.apply(self, phase_name='init')
+        self.type = ''
 
     def play(self, **kwargs):
         if not self._was_played:
@@ -78,7 +79,7 @@ class Card(UniqueIdentifierMixin):
             self._was_played = True
 
     def __str__(self) -> str:
-        return self.name
+        return '{0.name} ({0.id:.4}) {0.type}'.format(self)
 
     def __repr__(self) -> str:
         return '<{0.__class__.__name__}: {0.name}>'.format(self)
@@ -88,6 +89,7 @@ class AbilityCard(Card):
     def __init__(self, name: str, cost: int, ability: Ability):
         self.damage = 0
         super(AbilityCard, self).__init__(name, cost, ability)
+        self.type = 'spell'
 
     def attack(self, victim: Union['MinionCard', 'Player']) -> List['MinionCard']:
         try:
@@ -103,6 +105,7 @@ class MinionCard(Card):
         self._health = health
         self.can_attack = False
         super(MinionCard, self).__init__(name, cost, ability)
+        self.type = 'minon'
 
     def play(self, player: 'Player', board: 'Board', target_id: Optional[str], **kwargs):
         if target_id is not None:

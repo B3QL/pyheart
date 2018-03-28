@@ -45,7 +45,7 @@ class Player(UniqueIdentifierMixin):
     def health(self, new_health: int):
         if new_health <= 0:
             self._health = 0
-            raise DeadPlayerError("Player's health reaches 0 [{0}]".format(new_health))
+            raise DeadPlayerError("{0} health reaches 0 [{1}]".format(self, new_health))
         self._health = new_health
 
     @property
@@ -90,6 +90,9 @@ class Player(UniqueIdentifierMixin):
 
     def __repr__(self) -> str:
         return '<{0.__class__.__name__} {0.name} mana: {0.mana}, health: {0.health}>'.format(self)
+
+    def __str__(self) -> str:
+        return self.name
 
     def __eq__(self, other: 'Player') -> bool:
         attrs = ['__class__', 'name', 'health', 'mana', 'current_mana', 'hand', 'deck']

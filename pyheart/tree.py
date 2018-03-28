@@ -69,6 +69,9 @@ class AttackNode(Node):
     def __repr__(self) -> str:
         return '<{0.__class__.__name__} attacker: {0.attacker!r} victim: {0.victim!r}>'.format(self)
 
+    def __str__(self) -> str:
+        return '{0.player} attacked {0.victim} with {0.attacker}'.format(self)
+
 
 class PlayCartNode(Node):
     def __init__(self, player, card, target=None):
@@ -83,6 +86,12 @@ class PlayCartNode(Node):
     def __repr__(self) -> str:
         return '<{0.__class__.__name__} card: {0.card!r} target: {0.target!r}>'.format(self)
 
+    def __str__(self) -> str:
+        fmt = '{0.player} played {0.card}'
+        if self.target:
+            fmt += ' on {0.target}'
+        return fmt.format(self)
+
 
 class EndTurnNode(Node):
     def __init__(self, player: 'Player'):
@@ -91,6 +100,9 @@ class EndTurnNode(Node):
 
     def apply(self, game_state: 'Game'):
         game_state.endturn(self.player)
+
+    def __str__(self) -> str:
+        return '{0.player} ended turn'.format(self)
 
 
 # class GameOverNode(Node):

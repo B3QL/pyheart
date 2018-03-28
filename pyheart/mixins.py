@@ -7,7 +7,7 @@ class UniqueIdentifierMixin:
 
     @property
     def id(self) -> str:
-        return self._uuid
+        return str(self._uuid)
 
     def __hash__(self) -> int:
         return hash(self.__class__) ^ hash(self._uuid)
