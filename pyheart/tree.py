@@ -115,8 +115,9 @@ T = TypeVar('T')
 
 
 class ActionGenerator:
-    def __init__(self, game_state: Game):
+    def __init__(self, game_state: Game, apply: bool = False):
         self.game_state = game_state
+        self.apply = apply
 
     def _is_valid_action(self, action: Optional[Node]) -> bool:
         if action is None:
@@ -183,6 +184,17 @@ class ActionGenerator:
                 yield next(current_generator)
             except StopIteration:
                 available_generators.remove(current_generator)
+
+    def __iter__(self):
+        action_generator = self.random_actions()
+        random_action = next(action_generator)
+        while random_action:
+            yield random_action
+            if self.apply:
+                random_action.apply(self.game_state)
+                random_action = next(self.random_actions())
+            else:
+                random_action = next(action_generator)
 
 
 class GameTree:
