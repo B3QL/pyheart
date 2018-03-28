@@ -138,8 +138,12 @@ class Board:
 
     def enemy_cards(self, player: Player) -> List[MinionCard]:
         all_players = set(self._player_cards.keys())
-        enemy_player_id = all_players - {player.id}
-        return self.played_cards(enemy_player_id.pop())
+        enemy_ids = all_players - {player.id}
+        try:
+            enemy_id = enemy_ids.pop()
+        except KeyError:
+            return list()
+        return self.played_cards(enemy_id)
 
     def get_card(self, card_id: str, player: Player) -> MinionCard:
         try:

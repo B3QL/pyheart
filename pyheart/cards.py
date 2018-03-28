@@ -18,6 +18,10 @@ class Ability:
         phase_method_name = f'_{phase_name}_phase'
         getattr(self, phase_method_name, self.__default_method)(card=card, **kwargs)
 
+    def _discard_target(self, target_id: Optional[str] = None, **kwargs):
+        if target_id is not None:
+            raise InvalidTargetError('Card cannot target other cards')
+
     def __default_method(self, **kwargs):
         pass
 
@@ -30,16 +34,19 @@ class Ability:
 
 class ChargeAbility(Ability):
     def _init_phase(self, card: 'MinionCard', **kwargs):
+        self._discard_target(**kwargs)
         card.can_attack = True
 
 
 class IncreaseDamageAbility(Ability):
     def _play_phase(self, card: 'MinionCard', **kwargs):
+        self._discard_target(**kwargs)
         card.damage += self._val
 
 
 class IncreaseMinonsHealthAbility(Ability):
     def _play_phase(self, board: 'Board', player: 'Player', **kwargs):
+        self._discard_target(**kwargs)
         for card in board.played_cards(player):
             card.health += self._val
 
@@ -59,6 +66,7 @@ class DealDamage(Ability):
         card.damage = self._val
 
     def _play_phase(self, card: 'AbilityCard', board: 'Board', player: 'Player', **kwargs):
+        self._discard_target(**kwargs)
         for victim in board.enemy_cards(player):
             board.attack(card, victim.id)
 
@@ -87,7 +95,7 @@ class Card(UniqueIdentifierMixin):
 
 class AbilityCard(Card):
     def __init__(self, name: str, cost: int, ability: Ability):
-        self.damage = 0
+        self.damage = 0  # ability can change it during init phase
         super(AbilityCard, self).__init__(name, cost, ability)
         self.type = 'spell'
 

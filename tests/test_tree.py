@@ -1,4 +1,4 @@
-from pyheart.cards import Deck, MinionCard, ChargeAbility
+from pyheart.cards import Deck, MinionCard, ChargeAbility, AbilityCard, DealDamage
 from pyheart.tree import GameTree, Node, ActionGenerator
 
 
@@ -142,3 +142,19 @@ def test_playout(game):
 
     assert action.is_terminal
 
+
+def test_play_action_with_ability_cards(game):
+    cards = [
+        MinionCard(name='Animated Statue', cost=0, attack=10, health=10),
+        MinionCard(name='Aberration', cost=0, attack=1, health=1, ability=ChargeAbility()),
+        AbilityCard(name='Flamestrike', cost=0, ability=DealDamage(4)),
+    ]
+    deck = Deck(cards)
+    game.NUMBERS_OF_START_CARDS = (2, 0)
+    g = game(player_decks=[deck, deck])
+    player, _ = g.players
+    g.start()
+    g.play(player, player.hand[0])
+
+    gen = ActionGenerator(g)
+    assert len(list(gen.play_actions())) == 2
