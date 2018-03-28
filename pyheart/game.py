@@ -196,11 +196,10 @@ class Game:
     def start(self):
         if not self._game_started:
             self._game_started = True
-            self.endturn()
+            self.endturn(self.current_player)
 
-    def endturn(self):
-        if not self._game_started:
-            raise GameNotStartedError('Action allowed only after game start')
+    def endturn(self, player: Player):
+        self._check_state(player)
         self._turn += 1
         self.board.reset_cards(self.current_player)
         self._reset_player(self.current_player)

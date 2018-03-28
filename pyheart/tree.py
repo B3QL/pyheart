@@ -85,8 +85,12 @@ class PlayCartNode(Node):
 
 
 class EndTurnNode(Node):
+    def __init__(self, player: 'Player'):
+        super(EndTurnNode, self).__init__()
+        self.player = player
+
     def apply(self, game_state: 'Game'):
-        game_state.endturn()
+        game_state.endturn(self.player)
 
 
 # class GameOverNode(Node):
@@ -154,7 +158,7 @@ class ActionGenerator:
                 yield PlayCartNode(player, card, target)
 
     def endturn_action(self) -> Iterator[EndTurnNode]:
-        action = EndTurnNode()
+        action = EndTurnNode(self.game_state.current_player)
         if self._is_valid_action(action):
             yield action
 

@@ -77,9 +77,9 @@ def test_attack_action_generator_with_enemies(game):
     first_player, second_player = g.players
     g.start()
     g.play(first_player, first_player.hand[0])
-    g.endturn()
+    g.endturn(g.current_player)
     g.play(second_player, second_player.hand[0])
-    g.endturn()
+    g.endturn(g.current_player)
     g.play(first_player, first_player.hand[0])
 
     gen = ActionGenerator(g)
@@ -108,9 +108,9 @@ def test_random_action_generator(game):
     first_player, second_player = g.players
     g.start()
     g.play(first_player, first_player.hand[0])
-    g.endturn()
+    g.endturn(g.current_player)
     g.play(second_player, second_player.hand[0])
-    g.endturn()
+    g.endturn(g.current_player)
 
     gen = ActionGenerator(g)
 
