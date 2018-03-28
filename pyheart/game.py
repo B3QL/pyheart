@@ -177,7 +177,7 @@ class Game:
             Player(name, start_cards, deck, self.board)
             for name, start_cards, deck in zip(player_names, self.NUMBERS_OF_START_CARDS, player_decks)
         ]
-        self._turn = -1
+        self._turn = 0
         self._game_started = False
 
     def _calculate_turn(self, turn):
@@ -186,15 +186,15 @@ class Game:
 
     @property
     def turn(self):
-        return max(self._turn, 0)
+        return max(self._turn, 1)
 
     @property
     def current_player(self):
-        return self._calculate_turn(self.turn)
+        return self._calculate_turn(self.turn - 1)
 
     @property
     def next_player(self):
-        return self._calculate_turn(self.turn + 1)
+        return self._calculate_turn(self.turn)
 
     def start(self):
         if not self._game_started:
