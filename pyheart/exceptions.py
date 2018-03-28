@@ -19,12 +19,14 @@ class NotEnoughManaError(InvalidActionError):
 
 
 class EmptyDeckError(Exception):
-    def __init__(self, count):
+    def __init__(self, count: int):
         self.deal_attempt = count
 
 
 class DeadPlayerError(Exception):
-    pass
+    def __init__(self, msg: str, player: 'Player'):
+        super(DeadPlayerError, self).__init__(msg)
+        self.player = player
 
 
 class GameNotStartedError(InvalidActionError):

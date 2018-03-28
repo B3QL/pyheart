@@ -1,7 +1,6 @@
 import random
 from math import sqrt, log
-from functools import partial
-from typing import Iterator, Callable, Optional
+from typing import Iterator, Callable, Optional, Iterable
 
 from pyheart.exceptions import InvalidActionError, DeadPlayerError
 from pyheart.game import Game
@@ -10,46 +9,76 @@ from pyheart.game import Game
 class Node:
     def __init__(self):
         self.visited = 0
-        self.children = []
-        self.wins = 0
-        self.looses = 0
+        self.children = set()
+        self._wins = 0
+        self._looses = 0
         self.is_terminal = False
+        self.is_expandable = True
+        self.parent = None
 
     @property
-    def nodes(self):
+    def wins(self):
+        return self._wins
+
+    @wins.setter
+    def wins(self, value):
+        if value > 0:
+            self._wins += value
+        else:
+            self._looses += abs(value)
+
+    @property
+    def nodes(self) -> int:
         return 1 + sum(child.nodes for child in self.children)
 
     @property
-    def height(self):
+    def height(self) -> int:
         if self.is_leaf:
             return 0
         return 1 + max(child.height for child in self.children)
 
     @property
-    def score(self):
-        total_games = self.wins + self.looses
+    def score(self) -> float:
+        total_games = self._wins + self._looses
         if total_games:
-            return self.wins / total_games
+            return self._wins / total_games
         return 0
 
-    def add_children(self, children):
-        self.children.extend(children)
+    def add_children(self, children: Iterable['Node']):
+        for child in children:
+            self.add_child(child)
 
-    def visit(self):
-        self.visited += 1
+    def add_child(self, child: 'Node') -> bool:
+        child.parent = self
+        before_add = set(self.children)
+        self.children.add(child)
+        return bool(self.children - before_add)
 
     @property
-    def is_leaf(self):
+    def path(self) -> Iterator['Node']:
+        path = [self]
+        parent_node = self.parent
+        while parent_node:
+            path.append(parent_node)
+            parent_node = parent_node.parent
+        return path
+
+    @property
+    def is_leaf(self) -> bool:
         return not bool(self.children)
 
     def best_child(self, scoring_function: Callable[['Node'], float]) -> Optional['Node']:
         if self.is_leaf:
             return None
-        self.children.sort(key=scoring_function, reverse=True)
-        return self.children[0]
+        children = list(self.children)
+        children.sort(key=scoring_function)
+        return children.pop()
 
     def apply(self, game_state: Game):
         pass
+
+    def visit(self):
+        self.visited += 1
 
 
 class StartGameNode(Node):
@@ -104,6 +133,9 @@ class EndTurnNode(Node):
 
     def __str__(self) -> str:
         return '{0.player} ended turn'.format(self)
+
+    def __repr__(self) -> str:
+        return '<{0.__class__.__name__} player: {0.player!r}>'.format(self)
 
 
 class ActionGenerator:
@@ -198,8 +230,9 @@ class ActionGenerator:
 
 
 class GameTree:
-    def __init__(self, game_state: Game = None, root: Node = None):
-        self._game = game_state or Game()
+    def __init__(self, player: int = 1, game_state: Game = None, root: Node = None):
+        self.game = game_state or Game()
+        self.player = self.game.players[player - 1]
         self.root = root or StartGameNode()
 
     @property
@@ -210,37 +243,67 @@ class GameTree:
     def nodes(self) -> int:
         return self.root.nodes
 
-    @property
-    def game(self) -> Game:
-        return self._game.copy()
+    def reply_game(self, node: Node) -> Game:
+        game = self.game.copy()
+        for action in reversed(node.path):
+            action.apply(game)
+        return game
 
-    def select_node(self, node: Node, game_state: Game) -> Node:
-        node.visit()
-        if node.is_leaf:
-            return node
+    def tree_policy(self) -> Node:
+        node = self.root
+        while not node.is_terminal:
+            if node.is_expandable:
+                return self.expand(node)
+            else:
+                node = node.best_child(self._calculate_uct(node))
+        return node
 
-        scoring_function = partial(self._calculate_uct, parent=node)
-        best_child = node.best_child(scoring_function)
-        best_child.apply(game_state)
-        return self.select_node(best_child, game_state)
+    def _calculate_uct(self, parent: Node) -> Callable[[Node], float]:
+        def scoring_function(child: Node) -> float:
+            const = 1 / sqrt(2)
+            return child.score + 2 * const * sqrt(2 * log(parent.visited) / child.visited)
+        return scoring_function
 
-    def _calculate_uct(self, parent: Node, child: Node) -> float:
-        const = 1 / sqrt(2)
-        return child.score + 2 * const * sqrt(2 * log(parent.visited) / child.visited)
+    def expand(self, node: Node) -> Node:
+        game = self.reply_game(node)
+        for new_action in ActionGenerator(game):
+            if node.add_child(new_action):
+                return new_action
+        node.is_expandable = False
+        return node
 
-    def expand(self, parent: Node, game_state: Game) -> Node:
-        child = ActionGenerator(game_state).random_action()
-        parent.add_children(child)
-        child.apply(game_state)
-        return child
+    def default_policy(self, node: Node) -> float:
+        game = self.reply_game(node)
+        action = None
+        for action in ActionGenerator(game, apply=True):
+            pass
 
-    def run(self):
-        game_state_copy = self.game
-        selected_node = self.select_node(self.root, game_state_copy)
-        new_node = self.expand(selected_node, game_state_copy)
-        self.simulate(new_node, game_state_copy)
-        # backpropagation
+        try:
+            action.apply(game)
+        except DeadPlayerError as e:
+            if e.player == self.player:
+                return -1
+            return 1
 
-    def simulate(self, new_node: Node, game_state: Game):
-        for action in ActionGenerator(game_state):
-            action.apply(game_state)
+    def backup(self, node: Node, reward: float):
+        current_player = getattr(node, 'player')
+        for n in node.path[:-1]:
+            n.visit()
+            if getattr(n, 'player') == current_player:
+                n.wins += reward
+            else:
+                n.wins -= reward
+
+    def run(self, iterations: int) -> Node:
+        for _ in range(iterations):
+            selected_node = self.tree_policy()
+            reward = self.default_policy(selected_node)
+            self.backup(selected_node, reward)
+        return self.best_action()
+
+    def best_action(self) -> Node:
+        children = list(self.root.children)
+        return sorted(children, key=lambda k: k.wins).pop()
+
+    def __repr__(self) -> str:
+        return '<{0.__class__.__name__} nodes: {0.nodes}, height: {0.height}>'.format(self)

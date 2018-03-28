@@ -45,7 +45,7 @@ class Player(UniqueIdentifierMixin):
     def health(self, new_health: int):
         if new_health <= 0:
             self._health = 0
-            raise DeadPlayerError("{0} health reaches 0 [{1}]".format(self, new_health))
+            raise DeadPlayerError("{0} health reaches 0 [{1}]".format(self, new_health), player=self)
         self._health = new_health
 
     @property
