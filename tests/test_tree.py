@@ -138,7 +138,7 @@ def test_playout(game):
     g.start()
     action = None
     for action in ActionGenerator(g, apply=True):
-        pass
+        print(g.turn, action)
 
     assert action.is_terminal
 
