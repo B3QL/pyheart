@@ -80,6 +80,12 @@ class Node:
     def visit(self):
         self.visited += 1
 
+    def __hash__(self) -> int:
+        return hash(self.__class__)
+
+    def __eq__(self, other):
+        return hash(self) == hash(other)
+
 
 class StartGameNode(Node):
     def apply(self, game_state: Game):
@@ -102,6 +108,9 @@ class AttackNode(Node):
     def __str__(self) -> str:
         return '{0.player} attacked {0.victim} with {0.attacker}'.format(self)
 
+    def __hash__(self) -> int:
+        return hash(self.__class__) ^ hash(self.player) ^ hash(self.attacker) ^ hash(self.victim)
+
 
 class PlayCartNode(Node):
     def __init__(self, player, card, target=None):
@@ -122,6 +131,9 @@ class PlayCartNode(Node):
             fmt += ' on {0.target}'
         return fmt.format(self)
 
+    def __hash__(self) -> int:
+        return hash(self.__class__) ^ hash(self.player) ^ hash(self.card) ^ hash(self.target)
+
 
 class EndTurnNode(Node):
     def __init__(self, player: 'Player'):
@@ -136,6 +148,9 @@ class EndTurnNode(Node):
 
     def __repr__(self) -> str:
         return '<{0.__class__.__name__} player: {0.player!r}>'.format(self)
+
+    def __hash__(self) -> int:
+        return super(EndTurnNode, self).__hash__() ^ hash(self.player)
 
 
 class ActionGenerator:

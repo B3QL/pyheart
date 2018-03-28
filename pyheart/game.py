@@ -99,6 +99,9 @@ class Player(UniqueIdentifierMixin):
         attrs = ['__class__', 'name', 'health', 'mana', 'current_mana', 'hand', 'deck']
         return all(getattr(self, a) == getattr(other, a) for a in attrs)
 
+    def __hash__(self) -> int:
+        return super(Player, self).__hash__()
+
 
 class Board:
     MAX_CARDS_PER_PLAYER = 7
@@ -122,9 +125,8 @@ class Board:
         try:
             victim = self._cards[victim]
         except KeyError:
-            raise MissingCardError('{0} cannot attack not played {1} card'.format(attacker, victim))
-        except TypeError:
-            pass  # victim is an unhashable Player
+            if not hasattr(victim, 'id'):
+                raise MissingCardError('{0} cannot attack not played {1} card'.format(attacker, victim))
 
         for dead_card in attacker.attack(victim):
             self._remove_card(dead_card)

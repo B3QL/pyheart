@@ -1,4 +1,4 @@
-from pyheart.tree import GameTree, Node
+from pyheart.tree import GameTree, Node, ActionGenerator
 
 
 def test_create_tree():
@@ -38,3 +38,16 @@ def test_node_path():
     assert list(leaf.path) == [leaf, first_level, root]
 
 
+def test_node_expand_abilities():
+    tree = GameTree()
+    root = tree.root
+    tree.game.start()
+    actions = list(ActionGenerator(tree.game))
+    assert root.is_expandable
+    for _ in actions:
+        tree.expand(root)
+        assert root.is_expandable
+    assert len(root.children) == len(actions)
+    tree.expand(root)
+    assert len(root.children) == len(actions)
+    assert not root.is_expandable
