@@ -1,17 +1,22 @@
 from pyheart.tree import GameTree, Node, ActionGenerator
 
 
+class UniqueNode(Node):
+    def __hash__(self):
+        return hash(self.__class__) ^ hash(id(self))
+
+
 def test_create_tree():
     tree = GameTree()
 
     assert tree.nodes == 1
     assert tree.height == 0
 
-    tree.root.add_children(Node() for _ in range(10))
+    tree.root.add_children(UniqueNode() for _ in range(10))
     assert tree.nodes == 11
     assert tree.height == 1
 
-    list(tree.root.children)[0].add_children(Node() for _ in range(5))
+    list(tree.root.children)[0].add_children(UniqueNode() for _ in range(5))
     assert tree.nodes == 16
     assert tree.height == 2
 

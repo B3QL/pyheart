@@ -83,7 +83,7 @@ class Node:
     def __hash__(self) -> int:
         return hash(self.__class__)
 
-    def __eq__(self, other):
+    def __eq__(self, other: 'Node') -> bool:
         return hash(self) == hash(other)
 
 
