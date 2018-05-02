@@ -246,3 +246,23 @@ class Game:
 
     def copy(self) -> 'Game':
         return deepcopy(self)
+
+    def __str__(self):
+        first, second = self.players
+        player_line = '{0.name} ({0.id}) [{0.health} HP | {0.mana}/{0.current_mana} MANA]\n'
+        card = '[{0.name} ({0.id}) | {0.cost} COST | {1} ATTACK | {2} HP]'
+        separator = '-' * 50
+        cli = [
+            player_line.format(first) +
+            '\n'.join(card.format(c, getattr(c, 'damage', 0), getattr(c, 'health', 0)) for c in first.hand),
+            separator,
+            '\n'.join(card.format(c, getattr(c, 'damage', 0), getattr(c, 'health', 0)) for c in
+                      self.board.played_cards(first)),
+            separator,
+            '\n'.join(card.format(c, getattr(c, 'damage', 0), getattr(c, 'health', 0)) for c in
+                      self.board.played_cards(second)),
+            separator,
+            player_line.format(second) + '\n'.join(
+                card.format(c, getattr(c, 'damage', 0), getattr(c, 'health', 0)) for c in second.hand),
+        ]
+        return '\n'.join(cli)
