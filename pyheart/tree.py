@@ -9,7 +9,8 @@ from pyheart.game import Game
 class Node:
     def __init__(self):
         self.visited = 0
-        self.children = set()
+        self.children = []
+        self._children_set = set()
         self._wins = 0
         self._looses = 0
         self.is_terminal = False
@@ -49,10 +50,13 @@ class Node:
             self.add_child(child)
 
     def add_child(self, child: 'Node') -> bool:
+        if child in self._children_set:
+            return False
+
         child.parent = self
-        before_add = set(self.children)
-        self.children.add(child)
-        return bool(self.children - before_add)
+        self._children_set.add(child)
+        self.children.append(child)
+        return True
 
     @property
     def path(self) -> Iterator['Node']:
