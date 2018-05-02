@@ -100,7 +100,7 @@ class AttackNode(Node):
         self.victim = victim
 
     def apply(self, game_state):
-        game_state.attack(self.player, self.attacker, self.victim)
+        game_state.attack(self.player.id, self.attacker.id, self.victim.id)
 
     def __repr__(self) -> str:
         return '<{0.__class__.__name__} attacker: {0.attacker!r} victim: {0.victim!r}>'.format(self)
@@ -120,7 +120,7 @@ class PlayCartNode(Node):
         self.target = target
 
     def apply(self, game_state: 'Game'):
-        game_state.play(self.player, self.card, self.target)
+        game_state.play(self.player.id, self.card.id, getattr(self.target, 'id', None))
 
     def __repr__(self) -> str:
         return '<{0.__class__.__name__} card: {0.card!r} target: {0.target!r}>'.format(self)
@@ -141,7 +141,7 @@ class EndTurnNode(Node):
         self.player = player
 
     def apply(self, game_state: 'Game'):
-        game_state.endturn(self.player)
+        game_state.endturn(self.player.id)
 
     def __str__(self) -> str:
         return '{0.player} ended turn'.format(self)

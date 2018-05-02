@@ -3,7 +3,7 @@ from uuid import uuid4
 
 class UniqueIdentifierMixin:
     def __init__(self):
-        self._uuid = uuid4()
+        self._uuid, *_ = str(uuid4()).split('-')
 
     @property
     def id(self) -> str:

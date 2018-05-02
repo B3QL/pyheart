@@ -210,10 +210,10 @@ class Game:
     def start(self):
         if not self._game_started:
             self._game_started = True
-            self.endturn(self.current_player)
+            self.endturn(self.current_player.id)
 
-    def endturn(self, player: Player):
-        self._check_state(player)
+    def endturn(self, player_id: str):
+        self._check_state(player_id)
         self._turn += 1
         self.board.reset_cards(self.current_player)
         self._reset_player(self.current_player)
@@ -224,26 +224,25 @@ class Game:
         player.used_mana = 0
         player.take_cards(1)
 
-    def _check_state(self, player: Player):
+    def _check_state(self, player_id: str):
         if not self._game_started:
             raise GameNotStartedError('Action allowed only after game start')
 
-        if player != self.current_player:
+        if player_id != self.current_player.id:
             raise InvalidPlayerTurnError('Player {0.name} cannot play card in this turn')
 
-    def attack(self, player: Player, attacker: MinionCard, victim: Union[MinionCard, Player]):
-        self._check_state(player)
+    def attack(self, player_id: str, attacker_id: str, victim_id: str):
+        self._check_state(player_id)
 
-        victim = victim.id
         players = {player.id: player for player in self.players}
-        if victim in players:
-            victim = players[victim]
+        if victim_id in players:
+            victim_id = players[victim_id]
 
-        self.current_player.attack(attacker.id, victim)
+        self.current_player.attack(attacker_id, victim_id)
 
-    def play(self, player: Player, card: Card, target: MinionCard = None):
-        self._check_state(player)
-        self.current_player.play(card.id, getattr(target, 'id', None))
+    def play(self, player_id: str, card_id: str, target_id: str = None):
+        self._check_state(player_id)
+        self.current_player.play(card_id, target_id)
 
     def copy(self) -> 'Game':
         return deepcopy(self)

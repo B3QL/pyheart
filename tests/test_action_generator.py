@@ -33,7 +33,7 @@ def test_attack_action_generator_no_board_enemies(game):
     player, _ = g.players
     g.start()
     for card in cards:
-        g.play(player, card)
+        g.play(player.id, card.id)
     gen = ActionGenerator(g)
 
     assert len(player.hand) == 0
@@ -55,11 +55,11 @@ def test_attack_action_generator_with_enemies(game):
     g = game(player_decks=[deck, deck])
     first_player, second_player = g.players
     g.start()
-    g.play(first_player, first_player.hand[0])
-    g.endturn(g.current_player)
-    g.play(second_player, second_player.hand[0])
-    g.endturn(g.current_player)
-    g.play(first_player, first_player.hand[0])
+    g.play(first_player.id, first_player.hand[0].id)
+    g.endturn(g.current_player.id)
+    g.play(second_player.id, second_player.hand[0].id)
+    g.endturn(g.current_player.id)
+    g.play(first_player.id, first_player.hand[0].id)
 
     gen = ActionGenerator(g)
 
@@ -86,10 +86,10 @@ def test_random_action_generator(game):
     g = game(player_decks=[deck, deck])
     first_player, second_player = g.players
     g.start()
-    g.play(first_player, first_player.hand[0])
-    g.endturn(g.current_player)
-    g.play(second_player, second_player.hand[0])
-    g.endturn(g.current_player)
+    g.play(first_player.id, first_player.hand[0].id)
+    g.endturn(g.current_player.id)
+    g.play(second_player.id, second_player.hand[0].id)
+    g.endturn(g.current_player.id)
 
     gen = ActionGenerator(g)
 
@@ -133,7 +133,7 @@ def test_play_action_with_ability_cards(game):
     g = game(player_decks=[deck, deck])
     player, _ = g.players
     g.start()
-    g.play(player, player.hand[0])
+    g.play(player.id, player.hand[0].id)
 
     gen = ActionGenerator(g)
     assert len(list(gen.play_actions())) == 2
