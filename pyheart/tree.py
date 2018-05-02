@@ -92,8 +92,15 @@ class Node:
 
 
 class StartGameNode(Node):
+    def __init__(self, player):
+        super(StartGameNode, self).__init__()
+        self.player = player
+
     def apply(self, game_state: Game):
         game_state.start()
+
+    def __str__(self):
+        return '{0.player} started the game'.format(self)
 
 
 class AttackNode(Node):
@@ -252,7 +259,7 @@ class GameTree:
     def __init__(self, player: int = 1, game_state: Game = None, root: Node = None):
         self.game = game_state or Game()
         self.player = self.game.players[player - 1]
-        self.root = root or StartGameNode()
+        self.root = root or StartGameNode(self.player)
 
     @property
     def height(self) -> int:
@@ -326,3 +333,14 @@ class GameTree:
 
     def __repr__(self) -> str:
         return '<{0.__class__.__name__} nodes: {0.nodes}, height: {0.height}>'.format(self)
+
+    def __str__(self):
+        nodes = [self.root]
+        root_height = self.root.height
+        result = []
+        while nodes:
+            node = nodes.pop()
+            nodes.extend(reversed(node.children))
+            offset = root_height - node.height
+            result.append('* ' * offset + str(node))
+        return '\n'.join(result)
