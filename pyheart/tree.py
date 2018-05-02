@@ -313,14 +313,14 @@ class GameTree:
 
     def backup(self, node: Node, reward: float):
         current_player = getattr(node, 'player')
-        for n in node.path[:-1]:
+        for n in node.path:
             n.visit()
             if getattr(n, 'player') == current_player:
                 n.wins += reward
             else:
                 n.wins -= reward
 
-    def run(self, iterations: int) -> Node:
+    def run(self, iterations: int = 1) -> Node:
         for _ in range(iterations):
             selected_node = self.tree_policy()
             reward = self.default_policy(selected_node)
