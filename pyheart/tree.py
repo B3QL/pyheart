@@ -18,6 +18,10 @@ class Node:
         self.parent = None
 
     @property
+    def looses(self):
+        return self._looses
+
+    @property
     def wins(self):
         return self._wins
 
@@ -91,16 +95,9 @@ class Node:
         return hash(self) == hash(other)
 
 
-class StartGameNode(Node):
-    def __init__(self, player):
-        super(StartGameNode, self).__init__()
-        self.player = player
-
-    def apply(self, game_state: Game):
-        game_state.start()
-
+class InitialGameNode(Node):
     def __str__(self):
-        return '{0.player} started the game'.format(self)
+        return 'Initial game state'
 
 
 class AttackNode(Node):
@@ -258,8 +255,9 @@ class ActionGenerator:
 class GameTree:
     def __init__(self, player: int = 1, game_state: Game = None, root: Node = None):
         self.game = game_state or Game()
+        self.game.start()
         self.player = self.game.players[player - 1]
-        self.root = root or StartGameNode(self.player)
+        self.root = root or InitialGameNode()
 
     @property
     def height(self) -> int:
@@ -271,7 +269,7 @@ class GameTree:
 
     def reply_game(self, node: Node) -> Game:
         game = self.game.copy()
-        for action in reversed(node.path):
+        for action in reversed(node.path[:-1]):
             action.apply(game)
         return game
 
@@ -312,24 +310,30 @@ class GameTree:
             return 1
 
     def backup(self, node: Node, reward: float):
-        current_player = getattr(node, 'player')
         for n in node.path:
             n.visit()
-            if n.player == current_player:
-                n.wins += reward
-            else:
-                n.wins -= reward
+            n.wins += reward
 
     def run(self, iterations: int = 1) -> Node:
         for _ in range(iterations):
             selected_node = self.tree_policy()
             reward = self.default_policy(selected_node)
             self.backup(selected_node, reward)
-        return self.best_action()
+        return self.best_action
 
-    def best_action(self) -> Node:
+    @property
+    def best_action(self) -> Optional[Node]:
         children = list(self.root.children)
-        return sorted(children, key=lambda k: k.wins).pop()
+        try:
+            return sorted(children, key=lambda k: k.wins).pop()
+        except IndexError:
+            return None
+
+    def play(self, node: Node):
+        if node:
+            self.root = node
+            self.game = self.reply_game(self.root)
+            self.root.parent = None
 
     def __repr__(self) -> str:
         return '<{0.__class__.__name__} nodes: {0.nodes}, height: {0.height}>'.format(self)
