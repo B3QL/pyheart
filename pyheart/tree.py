@@ -6,13 +6,43 @@ from pyheart.exceptions import InvalidActionError, DeadPlayerError
 from pyheart.game import Game
 
 
+class ChildrenContainer:
+    def __init__(self):
+        self._list = []
+        self._set = set()
+
+    def add(self, child):
+        if child in self:
+            return False
+        self._list.append(child)
+        self._set.add(child)
+        return True
+
+    def __contains__(self, item):
+        return item in self._set
+
+    def __getitem__(self, item):
+        return self._list[item]
+
+    def __getattr__(self, item):
+        return list(getattr(child, item) for child in self._list)
+
+    def __str__(self):
+        return str(self._list)
+
+    def __repr__(self):
+        return repr(self._list)
+
+    def __iter__(self):
+        return iter(self._list)
+
+    def __len__(self):
+        return len(self._list)
+
+
 class Node:
     def __init__(self):
-        self.visited = 0
-        self.children = []
-        self._children_set = set()
-        self._wins = 0
-        self._looses = 0
+        self.children = ChildrenContainer()
         self.is_terminal = False
         self.is_expandable = True
         self.parent = None
@@ -54,13 +84,10 @@ class Node:
             self.add_child(child)
 
     def add_child(self, child: 'Node') -> bool:
-        if child in self._children_set:
-            return False
-
-        child.parent = self
-        self._children_set.add(child)
-        self.children.append(child)
-        return True
+        added = self.children.add(child)
+        if added:
+            child.parent = self
+        return added
 
     @property
     def path(self) -> Iterator['Node']:
