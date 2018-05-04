@@ -87,7 +87,7 @@ class Card(UniqueIdentifierMixin):
             self._was_played = True
 
     def __str__(self) -> str:
-        return '{0.name} ({0.id:.4}) {0.type}'.format(self)
+        return '{0.name} ({0.id}) {0.type}'.format(self)
 
     def __repr__(self) -> str:
         return '<{0.__class__.__name__}: {0.name}>'.format(self)
