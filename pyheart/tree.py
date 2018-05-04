@@ -42,6 +42,7 @@ class ChildrenContainer:
 
 class Node:
     def __init__(self):
+        self.visits = 0
         self.children = ChildrenContainer()
         self.is_terminal = False
         self.is_expandable = True
@@ -113,7 +114,7 @@ class Node:
         pass
 
     def visit(self):
-        self.visited += 1
+        self.visits += 1
 
     def __hash__(self) -> int:
         return hash(self.__class__)
@@ -312,7 +313,7 @@ class GameTree:
     def _calculate_uct(self, parent: Node) -> Callable[[Node], float]:
         def scoring_function(child: Node) -> float:
             const = 1 / sqrt(2)
-            return child.score + 2 * const * sqrt(2 * log(parent.visited) / child.visited)
+            return child.score + 2 * const * sqrt(2 * log(parent.visits) / child.visits)
         return scoring_function
 
     def expand(self, node: Node) -> Node:
