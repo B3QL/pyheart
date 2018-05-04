@@ -54,7 +54,6 @@ class Duel:
 
     def start(self):
         if not self._started:
-            self._started = True
             self.game.start()
             print(self.format_game())
             print()
@@ -69,3 +68,4 @@ class Duel:
             except DeadPlayerError as e:
                 print('LOSER: {0.name} ({0.id})'.format(e.player))
                 print(e)
+            self._started = True

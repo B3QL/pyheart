@@ -1,5 +1,6 @@
 import random
 from math import sqrt, log
+from collections import deque
 from typing import Iterator, Callable, Optional, Iterable
 
 from pyheart.exceptions import InvalidActionError, DeadPlayerError
@@ -49,6 +50,15 @@ class Node:
         self.is_terminal = False
         self.is_expandable = True
         self.parent = None
+
+    def find_node(self, node: 'Node'):
+        queue = deque([self])
+        while queue:
+            n = queue.pop()
+            if n == node:
+                return n
+            queue.extendleft(n.children)
+        return node
 
     @property
     def nodes(self) -> int:
@@ -351,8 +361,8 @@ class GameTree:
             return None
 
     def play(self, node: Node):
-        if node:
-            self.root = node
+        if node is not None:
+            self.root = self.root.find_node(node)
             self.root.parent = None
             self.root.apply(self.game)
 
