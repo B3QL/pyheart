@@ -76,4 +76,5 @@ class Duel:
                     print()
             except DeadPlayerError as e:
                 print('LOSER: {0}'.format(e))
-            self._started = True
+            finally:
+                self._started = True
