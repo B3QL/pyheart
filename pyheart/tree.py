@@ -44,24 +44,11 @@ class Node:
     def __init__(self):
         self.visits = 0
         self.children = ChildrenContainer()
+        self.wins = 0
+        self.losses = 0
         self.is_terminal = False
         self.is_expandable = True
         self.parent = None
-
-    @property
-    def looses(self):
-        return self._looses
-
-    @property
-    def wins(self):
-        return self._wins
-
-    @wins.setter
-    def wins(self, value):
-        if value > 0:
-            self._wins += value
-        else:
-            self._looses += abs(value)
 
     @property
     def nodes(self) -> int:
@@ -75,9 +62,9 @@ class Node:
 
     @property
     def score(self) -> float:
-        total_games = self._wins + self._looses
+        total_games = self.wins + self.losses
         if total_games:
-            return self._wins / total_games
+            return self.wins / total_games
         return 0
 
     def add_children(self, children: Iterable['Node']):
@@ -340,7 +327,10 @@ class GameTree:
     def backup(self, node: Node, reward: float):
         for n in node.path:
             n.visit()
-            n.wins += reward
+            if reward > 0:
+                n.wins += reward
+            else:
+                n.losses += abs(reward)
 
     def run(self, iterations: int = 1) -> Node:
         for _ in range(iterations):

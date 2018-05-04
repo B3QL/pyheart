@@ -63,3 +63,12 @@ def test_node_wins_propagation():
     tree.run()
 
     assert tree.root.wins == tree.root.children[0].wins
+
+
+def test_root_wins_losses_propagation():
+    tree = GameTree()
+    tree.run(10)
+    wins = sum(tree.root.children.wins)
+    losses = sum(tree.root.children.losses)
+    assert wins == tree.root.wins or wins + 1 == tree.root.wins
+    assert losses == tree.root.losses or losses + 1 == tree.root.losses
