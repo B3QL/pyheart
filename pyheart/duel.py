@@ -2,8 +2,15 @@ from pyheart.game import Game, DeadPlayerError
 from pyheart.tree import GameTree, ActionGenerator
 
 
-class RandomPlayer:
-    NAME = 'Random'
+class Player:
+    DEFAULT_NAME = ''
+
+    def __init__(self, name: str = None):
+        self.name = name or self.DEFAULT_NAME
+
+
+class RandomPlayer(Player):
+    DEFAULT_NAME = 'Random'
 
     def get_move(self, game: Game):
         generator = iter(ActionGenerator(game))
@@ -13,17 +20,19 @@ class RandomPlayer:
         pass
 
 
-class MCTSPlayer:
-    NAME = 'MCTS'
-    ITERATIONS = 100
+class MCTSPlayer(Player):
+    DEFAULT_NAME = 'MCTS'
+    DEFAULT_ITERATIONS = 100
 
-    def __init__(self):
+    def __init__(self, name: str = None, iterations: int = DEFAULT_ITERATIONS):
+        super(MCTSPlayer, self).__init__(name)
         self.tree = None
+        self.iterations = iterations
 
     def get_move(self, game: Game):
         if not self.tree:
             self.tree = GameTree(game_state=game)
-        best_move = self.tree.run(self.ITERATIONS)
+        best_move = self.tree.run(self.iterations)
         return best_move
 
     def update_state(self, move):
@@ -34,7 +43,7 @@ class MCTSPlayer:
 class Duel:
     def __init__(self, player_1, player_2):
         players = [player_1, player_2]
-        self.game = Game(player_names=[player.NAME for player in players])
+        self.game = Game(player_names=[player.name for player in players])
         self._players = {game_player.id: player for player, game_player in zip(players, self.game.players)}
         self._started = False
 
@@ -60,12 +69,11 @@ class Duel:
             try:
                 while True:
                     move = self.player.get_move(self.game)
+                    print('MOVE:', move)
                     move.apply(self.game)
                     self.update_players_state(move)
-                    print('MOVE:', move)
                     print(self.format_game())
                     print()
             except DeadPlayerError as e:
-                print('LOSER: {0.name} ({0.id})'.format(e.player))
-                print(e)
+                print('LOSER: {0}'.format(e))
             self._started = True
