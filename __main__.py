@@ -1,5 +1,5 @@
-from pyheart.duel import Duel, RandomPlayer
+from pyheart.duel import Duel, RandomPlayer, MCTSPlayer
 
 if __name__ == '__main__':
-    d = Duel(RandomPlayer(), RandomPlayer())
+    d = Duel(MCTSPlayer(), RandomPlayer())
     d.start()

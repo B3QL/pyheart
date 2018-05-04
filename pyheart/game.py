@@ -225,7 +225,7 @@ class Game:
             raise GameNotStartedError('Action allowed only after game start')
 
         if player_id != self.current_player.id:
-            raise InvalidPlayerTurnError('Player {0.name} cannot play card in this turn')
+            raise InvalidPlayerTurnError('Player ({0}) cannot play card in this turn'.format(player_id))
 
     def attack(self, player_id: str, attacker_id: str, victim_id: str):
         self._check_state(player_id)

@@ -268,11 +268,14 @@ class ActionGenerator:
 
 
 class GameTree:
-    def __init__(self, game_state: Game = None, root: Node = None):
-        self.game = game_state or Game()
-        self.game.start()
+    def __init__(self, game_state: Game = None):
+        if game_state is None:
+            self.game = Game()
+            self.game.start()
+        else:
+            self.game = game_state.copy()
         self.player = self.game.current_player
-        self.root = root or InitialGameNode()
+        self.root = InitialGameNode()
 
     @property
     def height(self) -> int:
@@ -350,8 +353,8 @@ class GameTree:
     def play(self, node: Node):
         if node:
             self.root = node
-            self.game = self.reply_game(self.root)
             self.root.parent = None
+            self.root.apply(self.game)
 
     def __repr__(self) -> str:
         return '<{0.__class__.__name__} nodes: {0.nodes}, height: {0.height}>'.format(self)
