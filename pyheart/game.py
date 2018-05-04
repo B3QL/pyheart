@@ -93,7 +93,7 @@ class Player(UniqueIdentifierMixin):
         return fmt.format(self, len(self.hand))
 
     def __str__(self) -> str:
-        return self.name
+        return '{0.name} ({0.id})'.format(self)
 
     def __hash__(self) -> int:
         return super(Player, self).__hash__()

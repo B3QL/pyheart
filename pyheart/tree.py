@@ -268,10 +268,10 @@ class ActionGenerator:
 
 
 class GameTree:
-    def __init__(self, player: int = 1, game_state: Game = None, root: Node = None):
+    def __init__(self, game_state: Game = None, root: Node = None):
         self.game = game_state or Game()
         self.game.start()
-        self.player = self.game.players[player - 1]
+        self.player = self.game.current_player
         self.root = root or InitialGameNode()
 
     @property
