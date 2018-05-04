@@ -95,10 +95,6 @@ class Player(UniqueIdentifierMixin):
     def __str__(self) -> str:
         return self.name
 
-    def __eq__(self, other: 'Player') -> bool:
-        attrs = ['__class__', 'name', 'health', 'mana', 'current_mana', 'hand', 'deck']
-        return all(getattr(self, a) == getattr(other, a) for a in attrs)
-
     def __hash__(self) -> int:
         return super(Player, self).__hash__()
 

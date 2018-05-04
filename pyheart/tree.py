@@ -315,7 +315,7 @@ class GameTree:
         current_player = getattr(node, 'player')
         for n in node.path:
             n.visit()
-            if getattr(n, 'player') == current_player:
+            if n.player == current_player:
                 n.wins += reward
             else:
                 n.wins -= reward

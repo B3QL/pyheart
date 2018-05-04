@@ -56,3 +56,10 @@ def test_node_expand_abilities():
     tree.expand(root)
     assert len(root.children) == len(actions)
     assert not root.is_expandable
+
+
+def test_node_wins_propagation():
+    tree = GameTree()
+    tree.run()
+
+    assert tree.root.wins == tree.root.children[0].wins
