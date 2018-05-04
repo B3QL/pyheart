@@ -334,13 +334,11 @@ class GameTree:
     def __repr__(self) -> str:
         return '<{0.__class__.__name__} nodes: {0.nodes}, height: {0.height}>'.format(self)
 
-    def __str__(self):
-        nodes = [self.root]
-        root_height = self.root.height
-        result = []
-        while nodes:
-            node = nodes.pop()
-            nodes.extend(reversed(node.children))
-            offset = root_height - node.height
-            result.append('* ' * offset + str(node))
+    def _print_node(self, node: Node, level: int = 0) -> str:
+        current_node = '* ' * level + str(node)
+        result = [current_node]
+        result.extend(self._print_node(child, level+1) for child in node.children)
         return '\n'.join(result)
+
+    def __str__(self):
+        return self._print_node(self.root)
