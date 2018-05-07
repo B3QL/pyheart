@@ -334,6 +334,9 @@ class GameTree:
 
     def _calculate_uct(self, parent: Node) -> Callable[[Node], float]:
         def scoring_function(child: Node) -> float:
+            if child.player != self.player:
+                return -random.random()
+
             const = 1 / sqrt(2)
             return child.score + 2 * const * sqrt(2 * log(parent.visits) / child.visits)
         return scoring_function
