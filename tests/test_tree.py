@@ -50,8 +50,8 @@ def test_node_expand_abilities():
     actions = list(ActionGenerator(tree.game))
     assert root.is_expandable
     for _ in actions:
-        tree.expand(root)
         assert root.is_expandable
+        tree.expand(root)
     assert len(root.children) == len(actions)
     tree.expand(root)
     assert len(root.children) == len(actions)

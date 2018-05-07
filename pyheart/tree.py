@@ -103,6 +103,10 @@ class Node:
     def best_child(self, scoring_function: Callable[['Node'], float]) -> Optional['Node']:
         if self.is_leaf:
             return None
+
+        if len(self.children) == 1:
+            return self.children[0]
+
         children = list(self.children)
         children.sort(key=scoring_function)
         return children.pop()
@@ -318,11 +322,17 @@ class GameTree:
 
     def expand(self, node: Node) -> Node:
         game = self.reply_game(node)
-        for new_action in ActionGenerator(game):
-            if node.add_child(new_action):
-                return new_action
-        node.is_expandable = False
-        return node
+        action_iterator = iter(ActionGenerator(game))
+        new_node = node
+        try:
+            next_action = next(action_iterator)
+            while new_node == node:
+                if node.add_child(next_action):
+                    new_node = next_action
+                next_action = next(action_iterator)
+        except StopIteration:
+            node.is_expandable = False
+        return new_node
 
     def default_policy(self, node: Node) -> float:
         try:
