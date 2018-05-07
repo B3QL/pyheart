@@ -8,9 +8,9 @@ from pyheart.game import Game
 
 
 class ChildrenContainer:
-    def __init__(self):
-        self._list = []
-        self._set = set()
+    def __init__(self, iterable: Iterable = ()):
+        self._list = list(iterable)
+        self._set = set(self._list)
 
     def add(self, child):
         if child in self:
@@ -26,7 +26,7 @@ class ChildrenContainer:
         return self._list[item]
 
     def __getattr__(self, item):
-        return list(getattr(child, item) for child in self._list)
+        return ChildrenContainer(getattr(child, item) for child in self._list)
 
     def __str__(self):
         return str(self._list)
@@ -59,6 +59,14 @@ class Node:
                 return n
             queue.extendleft(n.children)
         return node
+
+    @property
+    def exploration_rate(self) -> float:
+        if self.is_leaf:
+            return 0
+        all_children = len(self.children)
+        not_explored = sum(map(int, self.children.is_leaf))
+        return (all_children - not_explored) / all_children
 
     @property
     def nodes(self) -> int:
@@ -298,6 +306,16 @@ class GameTree:
     @property
     def nodes(self) -> int:
         return self.root.nodes
+
+    @property
+    def exploration_rate(self) -> float:
+        rates = []
+        queue = [self.root]
+        while queue:
+            node = queue.pop()
+            rates.append(node.exploration_rate)
+            queue.extend(node.children)
+        return sum(rates) / len(rates)
 
     def reply_game(self, node: Node) -> Game:
         game = self.game.copy()
