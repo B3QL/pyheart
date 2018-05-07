@@ -524,3 +524,26 @@ def test_deal_damage_spell(game):
     g.play(second_player.id, second_player.hand[0].id)
     assert len(g.board.played_cards(first_player)) == 1
     assert first_player_card_2.health == 2
+
+
+def test_deal_damage_spell_minion(game):
+    game.NUMBERS_OF_START_CARDS = (1, 0)
+    deck = Deck([
+        MinionCard(name='minon 1', cost=0, attack=50, health=2),
+        MinionCard(name='minon 2', cost=0, attack=50, health=12),
+        MinionCard(name='minion with ability', cost=1, attack=50, health=2, ability=DealDamage(10, allow_target=True)),
+    ])
+    g = game(player_decks=[deck, deck])
+
+    first_player, second_player = g.players
+    g.start()
+    first_player_card, first_player_card_2 = first_player.hand
+    g.play(first_player.id, first_player_card.id)
+    g.play(first_player.id, first_player_card_2.id)
+    g.endturn(g.current_player.id)
+
+    assert len(g.board.played_cards(first_player)) == 2
+    assert first_player_card_2.health == 12
+    g.play(second_player.id, second_player.hand[0].id, first_player_card_2.id)
+    assert first_player_card_2.health == 2
+    assert first_player_card.health == 2

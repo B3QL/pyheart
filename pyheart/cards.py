@@ -11,8 +11,9 @@ from pyheart.mixins import UniqueIdentifierMixin
 
 
 class Ability:
-    def __init__(self, value: int = None):
+    def __init__(self, value: int = None, allow_target: bool = False):
         self._val = value
+        self.can_target = allow_target
 
     def apply(self, card: 'Card', phase_name: str, **kwargs):
         phase_method_name = f'_{phase_name}_phase'
@@ -65,10 +66,14 @@ class DealDamage(Ability):
     def _init_phase(self, card: 'AbilityCard', **kwargs):
         card.damage = self._val
 
-    def _play_phase(self, card: 'AbilityCard', board: 'Board', player: 'Player', **kwargs):
-        self._discard_target(**kwargs)
-        for victim in board.enemy_cards(player):
-            board.attack(card, victim.id)
+    def _play_phase(self, card: 'AbilityCard', board: 'Board', player: 'Player', target_id: Optional[str], **kwargs):
+        if self.can_target:
+            card.can_attack = True
+            board.attack(card, target_id)
+        else:
+            self._discard_target(target_id)
+            for victim in board.enemy_cards(player):
+                board.attack(card, victim.id)
 
 
 class Card(UniqueIdentifierMixin):
@@ -116,11 +121,11 @@ class MinionCard(Card):
         self.type = 'minon'
 
     def play(self, player: 'Player', board: 'Board', target_id: Optional[str], **kwargs):
-        if target_id is not None:
+        if not self.ability.can_target and target_id is not None:
             raise InvalidTargetError('Minion card cannot target other cards')
 
         board.play_card(player=player, card=self)
-        super(MinionCard, self).play(**kwargs)
+        super(MinionCard, self).play(player=player, board=board, target_id=target_id, **kwargs)
 
     @property
     def health(self):
@@ -183,26 +188,27 @@ class Deck:
 
 class DefaultDeck(Deck):
     CARDS = (
-        # https://www.hearthpwn.com/cards/27400-hungry-naga
-        dict(name='Hungry Naga', cost=1, attack=1, health=1),
-        # https://www.hearthpwn.com/cards/14652-black-whelp
-        dict(name='Black Whelp', cost=1, attack=2, health=1),
-        # https://www.hearthpwn.com/cards/27375-mechanical-parrot
-        dict(name='Mechanical Parrot', cost=1, attack=3, health=6),
-        # https://www.hearthpwn.com/cards/14630-bone-construct
-        dict(name='Bone Construct', cost=1, attack=4, health=2),
-        # https://www.hearthpwn.com/cards/27334-animated-statue
-        dict(name='Animated Statue', cost=1, attack=10, health=10),
-        # https://www.hearthpwn.com/cards/14612-aberration
-        dict(name='Aberration', cost=1, attack=1, health=1, ability=ChargeAbility()),
-        # https://www.hearthpwn.com/cards/77024-abusive-sergeant
-        dict(name='Abusive Sergeant', cost=1, attack=2, health=1, ability=IncreaseDamageAbility(2)),
-        # https://www.hearthpwn.com/cards/49823-goldthorn
-        dict(name='Goldthorn', cost=10, ability=IncreaseMinonsHealthAbility(6)),
-        # https://www.hearthpwn.com/cards/55455-dinosize
-        dict(name='Dinosize', cost=8, ability=SetMinonHealthAndDamage(10)),
+        # https://www.hearthpwn.com/cards/76996-dire-mole
+        dict(name='Dire Mole', cost=1, attack=1, health=3),
+        # https://www.hearthpwn.com/cards/535-river-crocolisk
+        dict(name='River Crocolisk', cost=2, attack=2, health=3),
+        # https://www.hearthpwn.com/cards/362-magma-rager
+        dict(name='Magma Rager', cost=3, attack=5, health=1),
+        # https://www.hearthpwn.com/cards/31-chillwind-yeti
+        dict(name='Chillwind Yeti', cost=4, attack=4, health=5),
+        # https://www.hearthpwn.com/cards/325-stormpike-commando
+        dict(name='Stormpike Commando', cost=5, attack=4, health=2, ability=DealDamage(2, allow_target=True)),
+        # https://www.hearthpwn.com/cards/60-boulderfist-ogre
+        dict(name='Boulderfist Ogre', cost=6, attack=6, health=7),
         # https://www.hearthpwn.com/cards/44-flamestrike
         dict(name='Flamestrike', cost=7, ability=DealDamage(4)),
+        # https://www.hearthpwn.com/cards/55455-dinosize
+        dict(name='Dinosize', cost=8, ability=SetMinonHealthAndDamage(10)),
+        # https://www.hearthpwn.com/cards/194-king-krush
+        dict(name='King Krush', cost=9, attack=8, health=8, ability=ChargeAbility()),
+        # https://www.hearthpwn.com/cards/49823-goldthorn
+        dict(name='Goldthorn', cost=10, ability=IncreaseMinonsHealthAbility(6)),
+
     )
 
     NUMBER_OF_COPIES = 2
