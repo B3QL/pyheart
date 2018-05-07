@@ -325,12 +325,11 @@ class GameTree:
         return node
 
     def default_policy(self, node: Node) -> float:
-        game = self.reply_game(node)
-        action = None
-        for action in ActionGenerator(game, apply=True):
-            pass
-
         try:
+            game = self.reply_game(node)
+            action = None
+            for action in ActionGenerator(game, apply=True):
+                pass
             action.apply(game)
         except DeadPlayerError as e:
             if e.player == self.player:
