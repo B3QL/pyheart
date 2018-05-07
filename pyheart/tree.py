@@ -340,16 +340,17 @@ class GameTree:
 
     def expand(self, node: Node) -> Node:
         game = self.reply_game(node)
-        action_iterator = iter(ActionGenerator(game))
-        new_node = node
-        try:
-            next_action = next(action_iterator)
-            while new_node == node:
-                if node.add_child(next_action):
-                    new_node = next_action
-                next_action = next(action_iterator)
-        except StopIteration:
+        valid_actions = [action for action in ActionGenerator(game) if action not in node.children]
+
+        if len(valid_actions) <= 1:
             node.is_expandable = False
+
+        try:
+            new_node = random.choice(valid_actions)
+            node.add_child(new_node)
+        except IndexError:
+            new_node = node
+
         return new_node
 
     def default_policy(self, node: Node) -> float:
