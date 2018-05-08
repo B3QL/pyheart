@@ -28,6 +28,7 @@ class Player(UniqueIdentifierMixin):
         self.deck = deck
         self._hand = {card.id: card for card in deck.deal(cards_number)}
         self._board = board
+        self._graveyard = []
 
     @property
     def hand(self) -> List[Card]:
@@ -36,6 +37,10 @@ class Player(UniqueIdentifierMixin):
     @hand.setter
     def hand(self, cards: List[Card]):
         self._hand = {card.id: card for card in cards}
+
+    @property
+    def graveyard(self) -> List[Card]:
+        return list(self._graveyard)
 
     @property
     def health(self) -> int:
@@ -76,6 +81,7 @@ class Player(UniqueIdentifierMixin):
         card.play(player=self, board=self._board, target_id=target_id)
         self.used_mana += card.cost
         del self._hand[card.id]
+        self._graveyard.append(card)
 
     def attack(self, attacker_id: str, victim: Union['Player', str]):
         attacker = self._board.get_card(attacker_id, player=self)
@@ -180,16 +186,24 @@ class Game:
         if player_decks is None:
             player_decks = [DefaultDeck() for _ in player_names]
 
-        self.players = [
+        players = [
             Player(name, start_cards, deck, self.board)
             for name, start_cards, deck in zip(player_names, self.NUMBERS_OF_START_CARDS, player_decks)
         ]
+        self._players = {p.id: p for p in players}
         self._turn = 0
         self._game_started = False
 
     def _calculate_turn(self, turn):
         players_number = len(self.players)
         return self.players[turn % players_number]
+
+    @property
+    def players(self):
+        return list(self._players.values())
+
+    def player_by_id(self, id: str):
+        return self._players[id]
 
     @property
     def turn(self):

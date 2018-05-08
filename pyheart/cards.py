@@ -165,8 +165,16 @@ class MinionCard(Card):
 
 class Deck:
     def __init__(self, cards: Iterable[Card]):
-        self.cards = list(cards)
+        self._all_cards = {c.id: c for c in cards}
+        self.cards = self.all_cards
         self.empty_card = 0
+
+    @property
+    def all_cards(self) -> List[Card]:
+        return list(self._all_cards.values())
+
+    def card_by_id(self, id: str) -> Card:
+        return self._all_cards[id]
 
     def shuffle(self):
         random.shuffle(self.cards)
@@ -179,6 +187,9 @@ class Deck:
             self.empty_card += difference
             raise EmptyDeckError(self.empty_card)
         return next_cards
+
+    def remove(self, card: Card):
+        self.cards.remove(card)
 
     def __len__(self):
         return len(self.cards)

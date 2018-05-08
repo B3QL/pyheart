@@ -51,14 +51,17 @@ class Node:
         self.is_expandable = True
         self.parent = None
 
-    def find_node(self, node: 'Node'):
+    def find_node(self, node: Optional['Node']):
+        if node is None:
+            return None
+
         queue = deque([self])
         while queue:
             n = queue.pop()
             if n == node:
                 return n
             queue.extendleft(n.children)
-        return node
+        return None
 
     @property
     def exploration_rate(self) -> float:
@@ -131,6 +134,16 @@ class Node:
     def __eq__(self, other: 'Node') -> bool:
         return hash(self) == hash(other)
 
+    def backup(self, reward: float):
+        self.visit()
+        if reward > 0:
+            self.wins += reward
+        else:
+            self.losses += abs(reward)
+
+        if self.parent is not None:
+            self.parent.backup(reward)
+
 
 class InitialGameNode(Node):
     def __str__(self):
@@ -179,6 +192,34 @@ class PlayCartNode(Node):
     def __hash__(self) -> int:
         return hash(self.__class__) ^ hash(self.player) ^ hash(self.card) ^ hash(self.target)
 
+    def __eq__(self, other: Node) -> bool:
+        if isinstance(other, PlayCartNode):
+            attrs = ['player', 'card', 'target']
+            return all(getattr(self, attr) == getattr(other, attr) for attr in attrs)
+        return super(PlayCartNode, self).__eq__(other)
+
+
+class NonDeterministicPlayCartNode(PlayCartNode):
+    def __init__(self, chance, player, card, target=None):
+        super(NonDeterministicPlayCartNode, self).__init__(player, card, target)
+        self.chance = chance
+
+    def apply(self, game_state: 'Game'):
+        if self.card not in self.player.hand:
+            player = game_state.player_by_id(self.player.id)
+            card = player.deck.card_by_id(self.card.id)
+            player.hand += [card]
+            player.deck.remove(card)
+        super(NonDeterministicPlayCartNode, self).apply(game_state)
+
+    def backup(self, reward: float):
+        super(NonDeterministicPlayCartNode, self).backup(reward * self.chance)
+
+    def __str__(self):
+        parent = super(NonDeterministicPlayCartNode, self)
+        percent = self.chance * 100
+        return '[Maybe: {0:.2f}%] {1}'.format(percent, parent.__str__())
+
 
 class EndTurnNode(Node):
     def __init__(self, player: 'Player'):
@@ -199,9 +240,10 @@ class EndTurnNode(Node):
 
 
 class ActionGenerator:
-    def __init__(self, game_state: Game, apply: bool = False):
+    def __init__(self, game_state: Game, apply: bool = False, player: Optional['Player'] = None):
         self.game_state = game_state
         self.apply = apply
+        self.player = player or game_state.current_player
 
     def _is_valid_action(self, action: Optional[Node]) -> bool:
         if action is None:
@@ -246,10 +288,14 @@ class ActionGenerator:
                 yield AttackNode(player, attacker, victim)
 
     def play_actions(self) -> Iterator[PlayCartNode]:
-        actions_generator = self._all_play_actions()
+        actions_generator = self._all_unknown_play_actions()
+
+        if self.game_state.current_player == self.player:
+            actions_generator = self._all_known_play_actions()
+
         yield from self._handle_invalid_actions(actions_generator)
 
-    def _all_play_actions(self) -> Iterator[PlayCartNode]:
+    def _all_known_play_actions(self) -> Iterator[PlayCartNode]:
         player = self.game_state.current_player
         hand = player.hand
         random.shuffle(hand)
@@ -260,6 +306,23 @@ class ActionGenerator:
             random.shuffle(player_cards)
             for target in player_cards:
                 yield PlayCartNode(player, card, target)
+
+    def _all_unknown_play_actions(self) -> Iterator[PlayCartNode]:
+        player = self.game_state.current_player
+        already_played = set(self.game_state.board.played_cards(player))
+        deck = set(player.deck.all_cards)
+        graveyard = set(player.graveyard)
+
+        available_cards = list(deck - (already_played | graveyard))
+        random.shuffle(available_cards)
+        potential_targets = list(already_played)
+        potential_targets.append(None)
+
+        chance = len(player.hand) / len(available_cards)
+        for card in available_cards:
+            random.shuffle(potential_targets)
+            for target in potential_targets:
+                yield NonDeterministicPlayCartNode(chance, player, card, target)
 
     def endturn_action(self) -> Iterator[EndTurnNode]:
         action = EndTurnNode(self.game_state.current_player)
@@ -343,7 +406,7 @@ class GameTree:
 
     def expand(self, node: Node) -> Node:
         game = self.reply_game(node)
-        valid_actions = [action for action in ActionGenerator(game) if action not in node.children]
+        valid_actions = [action for action in ActionGenerator(game, player=self.player) if action not in node.children]
 
         if len(valid_actions) <= 1:
             node.is_expandable = False
@@ -360,7 +423,7 @@ class GameTree:
         try:
             game = self.reply_game(node)
             action = None
-            for action in ActionGenerator(game, apply=True):
+            for action in ActionGenerator(game, apply=True, player=self.player):
                 pass
             action.apply(game)
         except DeadPlayerError as e:
@@ -369,12 +432,7 @@ class GameTree:
             return 1
 
     def backup(self, node: Node, reward: float):
-        for n in node.path:
-            n.visit()
-            if reward > 0:
-                n.wins += reward
-            else:
-                n.losses += abs(reward)
+        node.backup(reward)
 
     def run(self, iterations: int = 1) -> Node:
         for _ in range(iterations):
@@ -392,10 +450,10 @@ class GameTree:
             return None
 
     def play(self, node: Node):
-        if node is not None:
-            self.root = self.root.find_node(node)
-            self.root.parent = None
-            self.root.apply(self.game)
+        found_node = self.root.find_node(node)
+        self.root = found_node or InitialGameNode()
+        self.root.parent = None
+        node.apply(self.game)
 
     def __repr__(self) -> str:
         return '<{0.__class__.__name__} nodes: {0.nodes}, height: {0.height}>'.format(self)
