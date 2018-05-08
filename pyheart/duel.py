@@ -1,5 +1,7 @@
-from pyheart.game import Game, DeadPlayerError
-from pyheart.tree import GameTree, ActionGenerator
+import random
+
+from pyheart.game import Game, DeadPlayerError, Player as GamePlayer
+from pyheart.tree import GameTree, ActionGenerator, AttackNode
 
 
 class Player:
@@ -14,6 +16,9 @@ class Player:
     def __repr__(self):
         return '<{0.__class__.__name__} name: {0.name}>'.format(self)
 
+    def update_state(self, move):
+        pass
+
 
 class RandomPlayer(Player):
     DEFAULT_NAME = 'Random'
@@ -22,8 +27,37 @@ class RandomPlayer(Player):
         generator = iter(ActionGenerator(game))
         return next(generator)
 
-    def update_state(self, move):
-        pass
+
+class AggressivePlayer(Player):
+    DEFAULT_NAME = 'Aggressive'
+
+    def get_move(self, game: Game):
+        actions = set(ActionGenerator(game))
+        attack_actions = set(filter(lambda a: isinstance(a, AttackNode), actions))
+        attack_hero = set(filter(lambda a: isinstance(a.victim, GamePlayer), attack_actions))
+        attack_minions = attack_actions - attack_hero
+        for action_type in [attack_hero, attack_minions, actions]:
+            actions = list(action_type)
+            random.shuffle(actions)
+            for action in actions:
+                return action
+
+
+class ControllingPlayer(Player):
+    DEFAULT_NAME = 'Controlling'
+
+    def get_move(self, game: Game):
+        actions = set(ActionGenerator(game))
+        attack_actions = set(filter(lambda a: isinstance(a, AttackNode), actions))
+        attack_hero = set(filter(lambda a: isinstance(a.victim, GamePlayer), attack_actions))
+        attack_minions = attack_actions - attack_hero
+
+        all_actions = [attack_minions, actions]
+        for action_type in all_actions:
+            actions = list(action_type)
+            random.shuffle(actions)
+            for action in actions:
+                return action
 
 
 class MCTSPlayer(Player):
