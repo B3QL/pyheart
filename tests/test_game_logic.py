@@ -15,8 +15,8 @@ from pyheart.exceptions import (
     NotEnoughManaError,
     TooManyCardsError,
     CardCannotAttackError,
-    TargetNotDefinedError
-)
+    TargetNotDefinedError,
+    InvalidTargetError)
 
 
 def test_create_new_game(game):
@@ -547,3 +547,22 @@ def test_deal_damage_spell_minion(game):
     g.play(second_player.id, second_player.hand[0].id, first_player_card_2.id)
     assert first_player_card_2.health == 2
     assert first_player_card.health == 2
+
+
+def test_deal_damage_to_self_minions(game):
+    game.NUMBERS_OF_START_CARDS = (2, 0)
+    deck = Deck([
+        MinionCard(name='minon 1', cost=0, attack=50, health=2),
+        MinionCard(name='minon 2', cost=0, attack=50, health=12),
+        MinionCard(name='minion with ability', cost=1, attack=50, health=2, ability=DealDamage(10, allow_target=True)),
+    ])
+    g = game(player_decks=[deck, deck])
+
+    first_player, second_player = g.players
+    g.start()
+    first_player_card, first_player_card_2, first_player_card_3 = first_player.hand
+    g.play(first_player.id, first_player_card.id)
+    g.play(first_player.id, first_player_card_2.id)
+
+    with pytest.raises(InvalidTargetError):
+        g.play(first_player.id, first_player_card_3.id, first_player_card_2.id)

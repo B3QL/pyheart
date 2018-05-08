@@ -5,8 +5,8 @@ from pyheart.exceptions import (
     EmptyDeckError,
     CardCannotAttackError,
     TargetNotDefinedError,
-    InvalidTargetError
-)
+    InvalidTargetError,
+    MissingCardError)
 from pyheart.mixins import UniqueIdentifierMixin
 
 
@@ -68,8 +68,12 @@ class DealDamage(Ability):
 
     def _play_phase(self, card: 'AbilityCard', board: 'Board', player: 'Player', target_id: Optional[str], **kwargs):
         if self.can_target:
-            card.can_attack = True
-            board.attack(card, target_id)
+            try:
+                board.get_card(target_id, player)
+                raise InvalidTargetError('Card must target enemy card')
+            except MissingCardError:
+                card.can_attack = True
+                board.attack(card, target_id)
         else:
             self._discard_target(target_id)
             for victim in board.enemy_cards(player):
