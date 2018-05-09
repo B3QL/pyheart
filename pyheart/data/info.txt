@@ -1,2 +1,5 @@
+Opponent types: 3
 MCTS iterations: 30
-Game simulations: 100
+Game simulations per machine and opponent type: 100
+Total simulations per opponent type: 200
+Total simulations: 600
