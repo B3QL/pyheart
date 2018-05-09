@@ -1,0 +1,2 @@
+MCTS iterations: 30
+Game simulations: 100
