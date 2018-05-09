@@ -1,0 +1,74 @@
+\documentclass[10pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[polish]{babel}
+\usepackage[T1]{fontenc}
+\usepackage[left=2cm,right=2cm,top=2cm,bottom=2cm]{geometry}
+\author{Bartłomiej Kurzeja}
+\title{Wybrane zagadnienia sztucznej inteligencji \\ Ćwiczenie 1: MCTS, Gry niedeterministyczne}
+\begin{document}
+\maketitle
+\section{Wstęp}
+\subsection{Implementacja MCTS}
+Każdy węzeł drzewa reprezentują pojedyńczą akcję gracza taką jak:
+\begin{itemize}
+	\item zagranie karty,
+	\item zagranie karty na miniona (swojego lub przeciwnika),
+	\item atak miniona przeciwnika lub samego przeciwnika,
+	\item zakończenie tury. 
+\end{itemize}
+
+Dodatkowo przyjętym kryterium wyboru najlepszego dziecka do eksploracji jest Upper Confidence Bounds for Trees (UCT) ze stała $C_p = \frac{1}{\sqrt{2}}$. Natomiast najlepszy ruch wyznaczany jest na podstawie najwyższej wygranej dziecka, tak zwany Max Child.
+
+Implementacja obejmuję również węzły nie deterministyczne w tym przypadku prawdopodobieństwo zagrania karty przez gracza jest równy stosunkowi liczby kart w ręce do liczby kart jeszcze nie zagranych.
+
+W celu polepszenia wyników drzewo MCTS nie jest budowane każdorazowo od nowa, lecz wybierane jest poddrzewo na podstawie przebiegu gry do rozbudowy.
+
+\subsection{Implementacja wybranych kart}
+\paragraph{Dire Mole} 1 koszt / 1 atak / 3 zdrowie
+\paragraph{River Crocolisk} 2 koszt / 2 atak / 3 zdrowie
+\paragraph{Magma Rager} 3 koszt / 5 atak / 1 zdrowie
+\paragraph{Chillwind Yeti} 4 koszt / 4 atak / 5 zdrowie
+\paragraph{Stormpike Commando} 5 koszt / 4 atak / 2 zdrowie - Zadaje 2 obrażenia przy zagraniu
+\paragraph{Boulderfist Ogre} 6 koszt / 6 atak / 7 zdrowie
+\paragraph{Flamestrike} 7 koszt - Zaklęcie zdające 4 obrażenia wszystkim minionom przeciwnika
+\paragraph{Dinosize} 8 koszt - Zaklęcie ustawiające 10 punktów zdrowia i ataku wybranemu minionowi
+\paragraph{King Krush} 9 koszt / 8 atak / 8 zdrowie - Zdolność do natychmiastowego ataku
+\paragraph{Goldthorn} 10 koszt - Zaklęcie dodające 6 punktów zdrowia minonowi
+
+\subsection{Funkcja celu graczy zachłannych}
+\paragraph{Gracz agresywny} wybiera kolejno: atak na gracza, atak na dowolnego minona, losowa akcja.
+\paragraph{Gracz kontrolujący} wybiera kolejno: atak na dowolnego miniona, losowa akcja.
+\section{Badania}
+\subsection*{Założenia}
+\begin{itemize}
+	\item Łączna liczba gier przypadająca na typ gracza wynosi 200.
+	\item Liczba playoutów jest stała i wynosi 30 (czas wykonania około 10 sekund).
+	\item Głębokość drzewa dla korzenia wynosi 1.
+	\item Średni procent eksploracji drzewa to średnia wartość stosunku liczby liści do liczby wszystkich dzieci we wszystkich węzłach.
+\end{itemize}
+\subsection*{Wyniki}
+\begin{table}[h]
+\centering
+\caption{Czas budowania drzewa w zależności od liczby playoutów.}
+\begin{tabular}{|l|l|l|l|l|l|}
+\hline
+Liczba playoutów & 10     & 30    & 50     & 100    & 1000       \\ \hline
+Czas wykonania   & 4.21 s & 9.6 s & 13.1 s & 33.3 s & 5 min 32 s \\ \hline
+\end{tabular}
+\end{table}
+
+\begin{table}[h]
+\centering
+\caption{Efektywność gracza MCTS}
+\begin{tabular}{|l|c|c|c|}
+\hline
+Typ przeciwnika             & Losowy & Agresywny & Kontrolujący \\ \hline
+Procent wygranych           & 99 \%  & 71 \%     & 97 \%        \\ \hline
+Minimalna głębokość liścia  & 1      & 1         & 1            \\ \hline
+Średnia głębokość liścia    & 3.70   & 3.63      & 3.85         \\ \hline
+Maksymalna głębokość liścia & 8      & 7         & 7            \\ \hline
+Mediana głębokości liścia   & 4      & 4         & 4            \\ \hline
+Średni procent eksploracji  & 11 \%  & 11 \%     & 12 \%        \\ \hline
+\end{tabular}
+\end{table}
+\end{document}
