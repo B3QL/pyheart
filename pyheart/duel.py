@@ -1,4 +1,7 @@
+import json
 import random
+import multiprocessing as mp
+from datetime import datetime
 
 from pyheart.game import Game, DeadPlayerError, Player as GamePlayer
 from pyheart.tree import GameTree, ActionGenerator, AttackNode
@@ -22,6 +25,9 @@ class Player:
     @property
     def stats(self):
         return {}
+
+    def clone(self):
+        return self.__class__(self.name)
 
 
 class RandomPlayer(Player):
@@ -85,7 +91,14 @@ class MCTSPlayer(Player):
 
     @property
     def stats(self):
-        return {'tree_height': self.tree.height, 'tree_exploration': self.tree.exploration_rate}
+        return {
+            'tree_height': self.tree.height,
+            'tree_exploration': self.tree.exploration_rate,
+            'tree_nodes': self.tree.nodes
+        }
+
+    def clone(self):
+        return MCTSPlayer(self.name, self.iterations)
 
 
 class Duel:
@@ -139,3 +152,47 @@ class Duel:
             print('MOVE:', info['last_move'])
             self.print_game_status()
         print('LOSER: {0}'.format(info['loser']))
+
+
+class Arena:
+    def __init__(self, fights, fighter_pairs):
+        self.duels = [
+            Duel(first.clone(), second.clone())
+            for _ in range(fights)
+            for first, second in fighter_pairs
+        ]
+
+    def start(self):
+        with mp.Pool() as pool:
+            start = datetime.now()
+            print('Start:', start)
+            for i, result in enumerate(pool.imap_unordered(self.start_duel, self.duels), start=1):
+                print(i, '/', len(self.duels), datetime.now())
+                players = list(set(move.get('player_name', 'unknown').lower() for move in result))
+                filename = '_'.join(sorted(players))
+                with open(filename + '.txt', 'a') as f:
+                    f.writelines('\n'.join(map(json.dumps, result)) + '\n')
+            end = datetime.now()
+            print('End:', end)
+            print('Elapsed:', end - start)
+
+    def start_duel(self, duel):
+        latest_info = {}
+        all_info = []
+        while not latest_info.get('game_over'):
+            latest_info = duel.make_move()
+            del latest_info['last_move']
+            if 'loser' in latest_info:
+                latest_info['loser'] = latest_info['loser'].name
+            all_info.append(latest_info)
+        return all_info
+
+
+if __name__ == '__main__':
+    fighter_pairs = [
+        (MCTSPlayer(iterations=10), AggressivePlayer()),
+        (MCTSPlayer(iterations=10), RandomPlayer()),
+        (MCTSPlayer(iterations=10), ControllingPlayer()),
+    ]
+    arena = Arena(fights=2, fighter_pairs=fighter_pairs)
+    arena.start()
